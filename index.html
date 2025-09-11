@@ -14,22 +14,24 @@
     })();
   </script>
 
-  <meta name="robots" content="noindex,nofollow" />
+  <meta name="robots" content="noindex,nofollow">
 
   <style>
-    body{font-family:system-ui,-apple-system,Inter,Roboto,Arial,sans-serif;background:#f9fafb;margin:0}
+    :root{--ink:#111827;--muted:#6b7280;--card:#fff;--bg:#f9fafb;--brand:#111;--ok:#16a34a;--err:#dc2626}
+    body{font-family:system-ui,-apple-system,Inter,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);margin:0}
     .wrap{max-width:1180px;margin:40px auto;padding:20px}
+    .card{background:var(--card);padding:18px 20px;margin-bottom:16px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
     .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}
     @media (max-width:980px){.grid{grid-template-columns:1fr}}
-    .card{background:#fff;padding:18px 20px;margin-bottom:16px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
     h1{font-size:22px;margin:0 0 16px} h2{font-size:18px;margin:0 0 10px}
     label{display:block;margin-top:10px;font-weight:600}
-    input,select,textarea{width:100%;padding:10px;margin-top:4px;border:1px solid #ddd;border-radius:8px;font-size:15px}
+    input,select,textarea{width:100%;padding:10px;margin-top:4px;border:1px solid #e5e7eb;border-radius:8px;font-size:15px;background:#fff}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    button{margin-top:12px;padding:10px 16px;border:0;border-radius:8px;background:#111;color:#fff;font-weight:700;cursor:pointer}
+    button{margin-top:12px;padding:10px 16px;border:0;border-radius:8px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer}
     button[disabled]{opacity:.6;cursor:not-allowed}
-    .muted{color:#6b7280;font-size:13px}
-    .error{color:#dc2626;margin-top:8px}
+    .muted{color:var(--muted);font-size:13px}
+    .error{color:var(--err);margin-top:8px}
+    .ok{color:var(--ok);margin-top:8px}
     nav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
     nav button{background:#e5e7eb;color:#111} nav button.active{background:#111;color:#fff}
     table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
@@ -37,10 +39,10 @@
     th{background:#f3f4f6}
     tr:hover{background:#fafafa}
     .right{display:flex;justify-content:flex-end;gap:8px}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef2ff}
     .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
     .sel{background:#fef3c7 !important}
-    .log{margin:10px 0;padding:10px;border-radius:8px;background:#fff;border:1px dashed #e5e7eb;font:12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;max-height:160px;overflow:auto;white-space:pre-wrap}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef2ff}
+    .log{margin:10px 0;padding:10px;border-radius:8px;background:#fff;border:1px dashed #e5e7eb;font:12px/1.5 ui-monospace,Menlo,monospace;max-height:160px;overflow:auto;white-space:pre-wrap}
   </style>
 </head>
 <body>
@@ -117,7 +119,7 @@
         <div class="card">
           <h2>Seznam kuponů</h2>
           <div class="right"><button id="cp_delete">Smazat / deaktivovat</button></div>
-          <div class="muted">Klikni na kupon pro úpravu (a vybrání pro smazání/deaktivaci).</div>
+          <div class="muted">Klikni na kupon pro úpravu (a pro smazání/deaktivaci).</div>
           <table id="couponsTable"><thead><tr>
             <th>Kód</th><th>Typ</th><th>Hodnota</th><th>Max použ.</th><th>Vyčerpáno</th><th>Min qty</th><th>Aktivní</th>
           </tr></thead><tbody></tbody></table>
@@ -253,12 +255,15 @@ document.querySelectorAll('nav button[data-tab]').forEach(b=>{
 el('logoutBtn').onclick = ()=>{ localStorage.removeItem('adm_token'); location.reload(); };
 
 /* ===== STATE ===== */
-let SELECTED_EVENT_ID=''; let SELECTED_COUPON_CODE=''; let BOOKING_KEY=null;
+let SELECTED_EVENT_ID=''; let SELECTED_COUPON_CODE=''; let BOOKING_KEY=null; let CURRENT_EVENT_LABELS={};
 
 /* ===== EVENTS ===== */
 ['f_from','f_to','f_q'].forEach(id=>{ const x=el(id); if(x) x.addEventListener('input', ()=>loadEvents()); });
-el('ev_export').onclick = ()=>{ if(!SELECTED_EVENT_ID){ alert('Vyber termín.'); return; }
-  window.location.href = API_URL+'?action=admin_bookings_export&eventId='+encodeURIComponent(SELECTED_EVENT_ID)+'&'+authQuery(); };
+
+el('ev_export').onclick = ()=>{
+  if(!SELECTED_EVENT_ID){ alert('Vyber termín.'); return; }
+  window.location.href = API_URL+'?action=admin_bookings_export&eventId='+encodeURIComponent(SELECTED_EVENT_ID)+'&'+authQuery();
+};
 el('ev_archive').onclick = async ()=>{
   if(!SELECTED_EVENT_ID){ alert('Vyber termín.'); return; }
   if(!confirm('Archivovat vybraný termín?')) return;
@@ -266,6 +271,7 @@ el('ev_archive').onclick = async ()=>{
   const j=await r.json(); if(!j.ok){ alert(j.error||'Archivace selhala'); return; }
   SELECTED_EVENT_ID=''; await loadEvents(); alert('Termín přesunut do archivu.');
 };
+
 async function loadEvents(){
   const box=el('eventsTable').querySelector('tbody'); box.innerHTML='<tr><td colspan="7">Načítám…</td></tr>';
   try{
@@ -298,8 +304,8 @@ el('ev_save').onclick = async ()=>{
     duration:Number(el('ev_duration').value||90), capacity:Number(el('ev_capacity').value||0), price:Number(el('ev_price').value||0), sibling_discount:Number(el('ev_sibling').value||0) };
   try{
     const r=await fetch(API_URL+'?action=admin_event_upsert&'+authQuery(),{method:'POST',headers:{'Content-Type':'text/plain; charset=utf-8'},body:JSON.stringify(payload)});
-    const j=await r.json(); if(!j.ok) throw new Error(j.error||'Uložení selhalo'); await loadEvents(); msg.style.color='#16a34a'; msg.textContent='Uloženo.';
-  }catch(e){ msg.style.color='#dc2626'; msg.textContent=String(e); logDbg(String(e)); }
+    const j=await r.json(); if(!j.ok) throw new Error(j.error||'Uložení selhalo'); await loadEvents(); msg.className='ok'; msg.textContent='Uloženo.';
+  }catch(e){ msg.className='error'; msg.textContent=String(e); logDbg(String(e)); }
 };
 
 /* ===== COUPONS ===== */
@@ -341,30 +347,34 @@ el('cp_save').onclick = async ()=>{
     valid_from:el('cp_from').value||null, valid_to:el('cp_to').value||null, active:Number(el('cp_active').value||1), note:el('cp_note').value||'' };
   try{
     const r=await fetch(API_URL+'?action=admin_coupon_upsert&'+authQuery(),{method:'POST',headers:{'Content-Type':'text/plain; charset=utf-8'},body:JSON.stringify(payload)});
-    const j=await r.json(); if(!j.ok) throw new Error(j.error||'Uložení selhalo'); await loadCoupons(); msg.style.color='#16a34a'; msg.textContent='Uloženo.';
-  }catch(e){ msg.style.color='#dc2626'; msg.textContent=String(e); logDbg(String(e)); }
+    const j=await r.json(); if(!j.ok) throw new Error(j.error||'Uložení selhalo'); await loadCoupons(); msg.className='ok'; msg.textContent='Uloženo.';
+  }catch(e){ msg.className='error'; msg.textContent=String(e); logDbg(String(e)); }
 };
 
 /* ===== BOOKINGS ===== */
-let CURRENT_EVENT_LABELS={}; let BOOKING_KEY=null;
-async function loadEventDropdown(){
-  const r=await fetch(API_URL+'?action=admin_events_dropdown');
-  const j=await r.json(); if(j.ok){ const sel=el('b_ev'); sel.innerHTML='<option value="">(všechny události)</option>';
-    (j.items||[]).forEach(it=>{ CURRENT_EVENT_LABELS[it.id]=it.label; const o=document.createElement('option'); o.value=it.id; o.textContent=it.label; sel.appendChild(o); }); }
-}
-['b_ev','b_from','b_to','b_q'].forEach(id=>{ const x=el(id); if(x) x.addEventListener('input', ()=>loadBookings()); });
 el('b_export').onclick = ()=>{
   const v=el('b_ev').value; if(!v){ alert('Vyber událost v rozbalovačce.'); return; }
   window.location.href = API_URL+'?action=admin_bookings_export&eventId='+encodeURIComponent(v)+'&'+authQuery();
 };
+['b_ev','b_from','b_to','b_q'].forEach(id=>{ const x=el(id); if(x) x.addEventListener('input', ()=>loadBookings()); });
+
+async function loadEventDropdown(){
+  const r=await fetch(API_URL+'?action=admin_events_dropdown'); const j=await r.json();
+  if(j.ok){ const sel=el('b_ev'); sel.innerHTML='<option value="">(všechny události)</option>';
+    (j.items||[]).forEach(it=>{ const o=document.createElement('option'); o.value=it.id; o.textContent=it.label; sel.appendChild(o); });
+  }
+}
 async function loadBookings(){
   const tb=el('bookingsTable').querySelector('tbody'); tb.innerHTML='<tr><td colspan="8">Načítám…</td></tr>';
   const p=new URLSearchParams({ action:'admin_bookings_list', eventId:el('b_ev').value||'', from:el('b_from').value||'', to:el('b_to').value||'', q:el('b_q').value||'', page:'1', pageSize:'200' });
-  const r=await fetch(API_URL+'?'+p.toString()+'&'+authQuery()); const j=await r.json(); if(!j.ok){ tb.innerHTML='<tr><td colspan="8" style="color:#dc2626">'+(j.error||'Chyba načtení')+'</td></tr>'; return; }
-  tb.innerHTML=''; if(!(j.items||[]).length){ tb.innerHTML='<tr><td colspan="8">Žádné rezervace.</td></tr>'; return; }
+  const r=await fetch(API_URL+'?'+p.toString()+'&'+authQuery()); const j=await r.json();
+  if(!j.ok){ tb.innerHTML='<tr><td colspan="8" style="color:#dc2626">'+(j.error||'Chyba načtení')+'</td></tr>'; return; }
+  tb.innerHTML='';
+  if(!(j.items||[]).length){ tb.innerHTML='<tr><td colspan="8">Žádné rezervace.</td></tr>'; return; }
   (j.items||[]).forEach(bk=>{
-    const tr=document.createElement('tr'); const label=CURRENT_EVENT_LABELS[bk.eventId]||bk.eventId;
-    tr.innerHTML=`<td>${new Date(bk.ts).toLocaleString('cs-CZ')}</td><td>${label}</td><td>${bk.name||''}</td><td>${bk.email||''}</td><td>${bk.phone||''}</td><td>${bk.qty}</td><td>${bk.payment||''}</td><td>${bk.total||0}</td>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${new Date(bk.ts).toLocaleString('cs-CZ')}</td><td>${bk.eventId}</td><td>${bk.name||''}</td>
+      <td>${bk.email||''}</td><td>${bk.phone||''}</td><td>${bk.qty}</td><td>${bk.payment||''}</td><td>${bk.total||0}</td>`;
     tr.onclick=()=>{ setSel(tr,'#bookingsTable'); BOOKING_KEY={ts:String(bk.ts),eventId:bk.eventId};
       el('bk_name').value=bk.name||''; el('bk_qty').value=bk.qty||0; el('bk_phone').value=bk.phone||''; el('bk_email').value=bk.email||''; el('bk_payment').value=bk.payment||'cash'; };
     tb.appendChild(tr);
@@ -375,8 +385,8 @@ el('bk_save').onclick = async ()=>{
   const payload={ ts:BOOKING_KEY.ts, eventId:BOOKING_KEY.eventId, name:el('bk_name').value.trim(), phone:el('bk_phone').value.trim(),
                   email:el('bk_email').value.trim(), qty:Number(el('bk_qty').value||0), paymentMethod:el('bk_payment').value };
   const r=await fetch(API_URL+'?action=admin_booking_update&'+authQuery(),{method:'POST',headers:{'Content-Type':'text/plain; charset=utf-8'},body:JSON.stringify(payload)});
-  const j=await r.json(); if(!j.ok){ msg.style.color='#dc2626'; msg.textContent=j.error||'Uložení selhalo'; return; }
-  msg.style.color='#16a34a'; msg.textContent='Uloženo.'; await loadBookings();
+  const j=await r.json(); if(!j.ok){ msg.className='error'; msg.textContent=j.error||'Uložení selhalo'; return; }
+  msg.className='ok'; msg.textContent='Uloženo.'; await loadBookings();
 };
 
 /* ===== ARCHIVE ===== */
