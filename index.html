@@ -79,12 +79,16 @@
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbzAJh9wVawvTfLUfsi7qqtkxyaT5Hpm69gyAlwNROW8N5S-MEIrOSW541caGaRQ5ysl_g/exec'; // ← přepiš na své /exec
+const API_URL = 'https://script.google.com/macros/s/AKfycbzAJh9wVawvTfLUfsi7qqtkxyaT5Hpm69gyAlwNROW8N5S-MEIrOSW541caGaRQ5ysl_g/exec'; // ← případně změň na své /exec
 
 const el = id => document.getElementById(id);
 const errEmail = el('msgEmail'), errOtp = el('msgOtp');
 
-function authHeader(){ return { 'Authorization': 'Bearer ' + (localStorage.getItem('adm_token') || '') }; }
+// token posíláme v URL query (GAS ho přečte z e.parameter.Authorization)
+function authQuery() {
+  const t = localStorage.getItem('adm_token') || '';
+  return 'Authorization=' + encodeURIComponent('Bearer ' + t);
+}
 
 // OTP: poslat kód
 el('sendOtpBtn').onclick = async ()=>{
@@ -128,40 +132,45 @@ document.querySelectorAll('nav button[data-tab]').forEach(b=>{
   };
 });
 
-// Loaders
+// Načtení termínů (token v query)
 el('loadEventsBtn').onclick = loadEvents;
-el('loadCouponsBtn').onclick = loadCoupons;
-
 async function loadEvents(){
-  const r=await fetch(API_URL+'?action=admin_events_list',{ headers: authHeader() });
+  const r=await fetch(API_URL+'?action=admin_events_list&'+authQuery());
   const j=await r.json();
   if(!j.ok){ alert(j.error||'Chyba načtení.'); return; }
   const tb=el('eventsTable').querySelector('tbody'); tb.innerHTML='';
   j.items.forEach(ev=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${ev.id}</td><td>${ev.name}</td><td>${ev.start}</td><td>${ev.capacity}</td><td>${ev.taken}</td><td>${ev.price}</td><td>${ev.sibling_discount}</td>`;
+    tr.innerHTML=`<td>${ev.id}</td><td>${ev.name}</td><td>${ev.start}</td>
+                  <td>${ev.capacity}</td><td>${ev.taken}</td><td>${ev.price}</td>
+                  <td>${ev.sibling_discount}</td>`;
     tb.appendChild(tr);
   });
 }
 
+// Načtení kuponů (token v query)
+el('loadCouponsBtn').onclick = loadCoupons;
 async function loadCoupons(){
-  const r=await fetch(API_URL+'?action=admin_coupons_list',{ headers: authHeader() });
+  const r=await fetch(API_URL+'?action=admin_coupons_list&'+authQuery());
   const j=await r.json();
   if(!j.ok){ alert(j.error||'Chyba načtení.'); return; }
   const tb=el('couponsTable').querySelector('tbody'); tb.innerHTML='';
   j.items.forEach(c=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${c.code}</td><td>${c.type}</td><td>${c.value}</td><td>${c.max_uses}</td><td>${c.used}</td><td>${c.active}</td>`;
+    tr.innerHTML=`<td>${c.code}</td><td>${c.type}</td><td>${c.value}</td>
+                  <td>${c.max_uses}</td><td>${c.used}</td><td>${c.active}</td>`;
     tb.appendChild(tr);
   });
 }
 
-// Session check
+// Session check (token v query)
 async function startApp(){
-  const r = await fetch(API_URL+'?action=session',{ headers: authHeader() });
+  const r = await fetch(API_URL+'?action=session&'+authQuery());
   const j = await r.json();
   if(!j.ok){ localStorage.removeItem('adm_token'); location.reload(); return; }
   el('loginCard').style.display='none'; el('app').style.display='block';
+  // volitelně rovnou načti data
+  // loadEvents(); loadCoupons();
 }
 if(localStorage.getItem('adm_token')) startApp();
 </script>
