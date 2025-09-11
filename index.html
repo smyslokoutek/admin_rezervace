@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin – Smyslokoutek</title>
+
+  <!-- Redirect, pokud se stránka načte z github.io -->
+  <script>
+    (function () {
+      if (location.hostname.endsWith('.github.io')) {
+        location.replace('https://admin.smyslokoutek.cz' + location.pathname + location.search + location.hash);
+      }
+    })();
+  </script>
+
+  <meta name="robots" content="noindex,nofollow">
+
+  <style>
+    body{font-family:system-ui,-apple-system,Inter,Roboto,Arial,sans-serif;background:#f9fafb;margin:0}
+    .wrap{max-width:880px;margin:40px auto;padding:20px}
+    .card{background:#fff;padding:20px;margin-bottom:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
+    h1{font-size:22px;margin:0 0 16px}
+    label{display:block;margin-top:12px;font-weight:600}
+    input{width:100%;padding:10px;margin-top:4px;border:1px solid #ddd;border-radius:8px;font-size:15px}
+    button{margin-top:14px;padding:10px 16px;border:0;border-radius:8px;background:#111;color:#fff;font-weight:700;cursor:pointer}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+    .error{color:#dc2626;margin-top:10px}
+    nav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
+    nav button{background:#e5e7eb;color:#111} nav button.active{background:#111;color:#fff}
+    table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
+    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left} th{background:#f3f4f6}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Admin – Smyslokoutek</h1>
+
+  <!-- LOGIN -->
+  <div id="loginCard" class="card">
+    <div id="stepEmail">
+      <label>Zadejte e-mail</label>
+      <input id="email" type="email" placeholder="např. info@smyslokoutek.cz" />
+      <button id="sendOtpBtn">Poslat kód</button>
+      <div id="msgEmail" class="error"></div>
+    </div>
+    <div id="stepOtp" style="display:none">
+      <label>Zadejte kód z e-mailu</label>
+      <input id="otp" type="text" placeholder="6místný kód" />
+      <button id="verifyOtpBtn">Přihlásit</button>
+      <div id="msgOtp" class="error"></div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" style="display:none">
+    <nav>
+      <button data-tab="events" class="active">Termíny</button>
+      <button data-tab="coupons">Kupony</button>
+      <button id="logoutBtn" style="margin-left:auto">Odhlásit</button>
+    </nav>
+
+    <div id="tab-events" class="card">
+      <h2>Termíny</h2>
+      <button id="loadEventsBtn">Načíst termíny</button>
+      <table id="eventsTable"><thead><tr>
+        <th>ID</th><th>Název</th><th>Start</th><th>Kapacita</th><th>Obsazeno</th><th>Cena</th><th>Sleva souroz.</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+
+    <div id="tab-coupons" class="card" style="display:none">
+      <h2>Kupony</h2>
+      <button id="loadCouponsBtn">Načíst kupony</button>
+      <table id="couponsTable"><thead><tr>
+        <th>Kód</th><th>Typ</th><th>Hodnota</th><th>Max použ.</th><th>Vyčerpáno</th><th>Aktivní</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzAJh9wVawvTfLUfsi7qqtkxyaT5Hpm69gyAlwNROW8N5S-MEIrOSW541caGaRQ5ysl_g/exec'; // ← přepiš na své /exec
+
+const el = id => document.getElementById(id);
+const errEmail = el('msgEmail'), errOtp = el('msgOtp');
+
+function authHeader(){ return { 'Authorization': 'Bearer ' + (localStorage.getItem('adm_token') || '') }; }
+
+// OTP: poslat kód
+el('sendOtpBtn').onclick = async ()=>{
+  const email = el('email').value.trim();
+  errEmail.textContent = '';
+  const r = await fetch(API_URL+'?action=auth_request_otp', {
+    method:'POST',
+    headers:{ 'Content-Type': 'text/plain; charset=utf-8' },
+    body: JSON.stringify({ email })
+  });
+  const j = await r.json();
+  if(!j.ok){ errEmail.textContent = j.error || 'Chyba při odeslání kódu.'; return; }
+  el('stepEmail').style.display='none'; el('stepOtp').style.display='block';
+};
+
+// OTP: ověřit
+el('verifyOtpBtn').onclick = async ()=>{
+  const email = el('email').value.trim();
+  const code  = el('otp').value.trim();
+  errOtp.textContent = '';
+  const r = await fetch(API_URL+'?action=auth_verify_otp', {
+    method:'POST',
+    headers:{ 'Content-Type': 'text/plain; charset=utf-8' },
+    body: JSON.stringify({ email, code })
+  });
+  const j = await r.json();
+  if(!j.ok){ errOtp.textContent = j.error || 'Chybný kód.'; return; }
+  localStorage.setItem('adm_token', j.token);
+  startApp();
+};
+
+el('logoutBtn').onclick = ()=>{ localStorage.removeItem('adm_token'); location.reload(); };
+
+// Tabs
+document.querySelectorAll('nav button[data-tab]').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('[id^=tab-]').forEach(x=>x.style.display='none');
+    el('tab-'+b.dataset.tab).style.display='block';
+  };
+});
+
+// Loaders
+el('loadEventsBtn').onclick = loadEvents;
+el('loadCouponsBtn').onclick = loadCoupons;
+
+async function loadEvents(){
+  const r=await fetch(API_URL+'?action=admin_events_list',{ headers: authHeader() });
+  const j=await r.json();
+  if(!j.ok){ alert(j.error||'Chyba načtení.'); return; }
+  const tb=el('eventsTable').querySelector('tbody'); tb.innerHTML='';
+  j.items.forEach(ev=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${ev.id}</td><td>${ev.name}</td><td>${ev.start}</td><td>${ev.capacity}</td><td>${ev.taken}</td><td>${ev.price}</td><td>${ev.sibling_discount}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function loadCoupons(){
+  const r=await fetch(API_URL+'?action=admin_coupons_list',{ headers: authHeader() });
+  const j=await r.json();
+  if(!j.ok){ alert(j.error||'Chyba načtení.'); return; }
+  const tb=el('couponsTable').querySelector('tbody'); tb.innerHTML='';
+  j.items.forEach(c=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${c.code}</td><td>${c.type}</td><td>${c.value}</td><td>${c.max_uses}</td><td>${c.used}</td><td>${c.active}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+// Session check
+async function startApp(){
+  const r = await fetch(API_URL+'?action=session',{ headers: authHeader() });
+  const j = await r.json();
+  if(!j.ok){ localStorage.removeItem('adm_token'); location.reload(); return; }
+  el('loginCard').style.display='none'; el('app').style.display='block';
+}
+if(localStorage.getItem('adm_token')) startApp();
+</script>
+</body>
+</html>
