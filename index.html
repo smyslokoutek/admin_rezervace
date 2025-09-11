@@ -18,8 +18,8 @@
 
   <style>
     body{font-family:system-ui,-apple-system,Inter,Roboto,Arial,sans-serif;background:#f9fafb;margin:0}
-    .wrap{max-width:1040px;margin:40px auto;padding:20px}
-    .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+    .wrap{max-width:1140px;margin:40px auto;padding:20px}
+    .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}
     @media (max-width:980px){.grid{grid-template-columns:1fr}}
     .card{background:#fff;padding:18px 20px;margin-bottom:16px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
     h1{font-size:22px;margin:0 0 16px}
@@ -27,7 +27,7 @@
     label{display:block;margin-top:10px;font-weight:600}
     input,select,textarea{width:100%;padding:10px;margin-top:4px;border:1px solid #ddd;border-radius:8px;font-size:15px}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    button{margin-top:14px;padding:10px 16px;border:0;border-radius:8px;background:#111;color:#fff;font-weight:700;cursor:pointer}
+    button{margin-top:12px;padding:10px 16px;border:0;border-radius:8px;background:#111;color:#fff;font-weight:700;cursor:pointer}
     button[disabled]{opacity:.6;cursor:not-allowed}
     .muted{color:#6b7280;font-size:13px}
     .error{color:#dc2626;margin-top:8px}
@@ -39,6 +39,8 @@
     tr:hover{background:#fafafa}
     .right{display:flex;justify-content:flex-end;gap:8px}
     .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef2ff}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+    .sel{background:#f5f5f5}
   </style>
 </head>
 <body>
@@ -74,7 +76,16 @@
       <div class="grid">
         <div class="card">
           <h2>Seznam termínů</h2>
-          <div class="muted">Kliknutím na řádek vyplníš formulář vpravo.</div>
+
+          <div class="toolbar">
+            <input id="f_from" type="date" />
+            <input id="f_to" type="date" />
+            <input id="f_q" placeholder="Hledat v ID / názvu" style="flex:1" />
+            <button id="ev_export">Export CSV</button>
+            <button id="ev_archive">Archivovat / smazat</button>
+          </div>
+          <div class="muted">Kliknutím na řádek vyplníš formulář vpravo (a vybereš ho pro Export/Archivaci).</div>
+
           <table id="eventsTable"><thead><tr>
             <th>ID</th><th>Název</th><th>Start</th><th>Kap.</th><th>Obs.</th><th>Cena</th><th>Sleva souroz.</th>
           </tr></thead><tbody></tbody></table>
@@ -123,7 +134,12 @@
       <div class="grid">
         <div class="card">
           <h2>Seznam kuponů</h2>
-          <div class="muted">Kliknutím na řádek vyplníš formulář vpravo.</div>
+
+          <div class="right" style="gap:8px">
+            <button id="cp_delete">Smazat / deaktivovat</button>
+          </div>
+          <div class="muted">Klikni na kupon pro úpravu (a vybrání pro smazání/deaktivaci).</div>
+
           <table id="couponsTable"><thead><tr>
             <th>Kód</th><th>Typ</th><th>Hodnota</th><th>Max použ.</th><th>Vyčerpáno</th><th>Min qty</th><th>Aktivní</th>
           </tr></thead><tbody></tbody></table>
@@ -248,19 +264,69 @@ document.querySelectorAll('nav button[data-tab]').forEach(b=>{
 });
 el('logoutBtn').onclick = ()=>{ localStorage.removeItem('adm_token'); location.reload(); };
 
+/* ==== LIST / FILTER / EXPORT / DELETE ==== */
+let SELECTED_EVENT_ID = '';
+let SELECTED_COUPON_CODE = '';
+
+['f_from','f_to','f_q'].forEach(id=>{ const x=document.getElementById(id); if(x) x.addEventListener('input', ()=>loadEvents()); });
+
+document.getElementById('ev_export').onclick = ()=>{
+  if(!SELECTED_EVENT_ID){ alert('Vyber nejdřív termín v tabulce.'); return; }
+  window.location.href = API_URL + '?action=admin_bookings_export&eventId='
+    + encodeURIComponent(SELECTED_EVENT_ID) + '&' + authQuery();
+};
+document.getElementById('ev_archive').onclick = async ()=>{
+  if(!SELECTED_EVENT_ID){ alert('Vyber nejdřív termín.'); return; }
+  if(!confirm('Opravdu archivovat/smazat vybraný termín? Rezervace zůstanou v Bookings.')) return;
+  try{
+    const r = await fetch(API_URL+'?action=admin_event_archive&'+authQuery(), {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain; charset=utf-8' },
+      body: JSON.stringify({ id: SELECTED_EVENT_ID })
+    });
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error||'Archivace selhala');
+    SELECTED_EVENT_ID = '';
+    await loadEvents();
+    alert('Termín přesunut do archivu.');
+  }catch(e){ alert(e.message); }
+};
+document.getElementById('cp_delete').onclick = async ()=>{
+  if(!SELECTED_COUPON_CODE){ alert('Vyber nejdřív kupon.'); return; }
+  const hard = confirm('Chceš kupon trvale smazat? (OK = hard delete, Zrušit = jen deaktivovat)');
+  try{
+    const r = await fetch(API_URL+'?action=admin_coupon_delete&'+authQuery(), {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain; charset=utf-8' },
+      body: JSON.stringify({ code: SELECTED_COUPON_CODE, hard })
+    });
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error||'Mazání selhalo');
+    SELECTED_COUPON_CODE = '';
+    await loadCoupons();
+    alert(hard ? 'Kupon smazán.' : 'Kupon deaktivován.');
+  }catch(e){ alert(e.message); }
+};
+
 /* ==== LOADERS ==== */
 async function loadEvents(){
-  const box = el('eventsTable').querySelector('tbody');
+  const box = document.getElementById('eventsTable').querySelector('tbody');
   box.innerHTML='<tr><td colspan="7">Načítám…</td></tr>';
   try{
-    const r = await fetch(API_URL+'?action=admin_events_list&'+authQuery());
+    const p = new URLSearchParams({
+      action:'admin_events_list',
+      from: (document.getElementById('f_from')||{}).value || '',
+      to:   (document.getElementById('f_to')||{}).value   || '',
+      q:    (document.getElementById('f_q')||{}).value    || ''
+    });
+    const r = await fetch(API_URL+'?'+p.toString()+'&'+authQuery());
     const j = await r.json();
     if(!j.ok) throw new Error(j.error||'Chyba načtení');
     renderEvents(j.items||[]);
   }catch(e){ box.innerHTML = `<tr><td colspan="7" style="color:#dc2626">${e.message}</td></tr>`; }
 }
 function renderEvents(items){
-  const box = el('eventsTable').querySelector('tbody');
+  const box = document.getElementById('eventsTable').querySelector('tbody');
   if(!items.length){ box.innerHTML='<tr><td colspan="7">Žádné termíny.</td></tr>'; return; }
   box.innerHTML='';
   items.forEach(ev=>{
@@ -268,26 +334,30 @@ function renderEvents(items){
     tr.innerHTML=`<td>${ev.id}</td><td>${ev.name}</td><td>${ev.start}</td>
                   <td>${ev.capacity}</td><td>${ev.taken}</td><td>${ev.price}</td>
                   <td>${ev.sibling_discount}</td>`;
-    tr.onclick=()=>fillEventForm(ev);
+    tr.onclick=()=>{
+      document.querySelectorAll('#eventsTable tbody tr').forEach(x=>x.classList.remove('sel'));
+      tr.classList.add('sel');
+      SELECTED_EVENT_ID = ev.id;
+      fillEventForm(ev);
+    };
     box.appendChild(tr);
   });
 }
 function fillEventForm(ev){
-  el('ev_id').value = ev.id||'';
-  el('ev_name').value = ev.name||'';
-  // převod ISO na datetime-local (yyyy-MM-ddTHH:mm)
+  document.getElementById('ev_id').value = ev.id||'';
+  document.getElementById('ev_name').value = ev.name||'';
   try{
     const d=new Date(ev.start); const pad=n=>String(n).padStart(2,'0');
-    el('ev_start').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    document.getElementById('ev_start').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }catch{}
-  el('ev_duration').value = ev.duration||90;
-  el('ev_capacity').value = ev.capacity||0;
-  el('ev_price').value = ev.price||0;
-  el('ev_sibling').value = ev.sibling_discount||0;
+  document.getElementById('ev_duration').value = ev.duration||90;
+  document.getElementById('ev_capacity').value = ev.capacity||0;
+  document.getElementById('ev_price').value = ev.price||0;
+  document.getElementById('ev_sibling').value = ev.sibling_discount||0;
 }
 
 async function loadCoupons(){
-  const box = el('couponsTable').querySelector('tbody');
+  const box = document.getElementById('couponsTable').querySelector('tbody');
   box.innerHTML='<tr><td colspan="7">Načítám…</td></tr>';
   try{
     const r = await fetch(API_URL+'?action=admin_coupons_list&'+authQuery());
@@ -297,48 +367,52 @@ async function loadCoupons(){
   }catch(e){ box.innerHTML = `<tr><td colspan="7" style="color:#dc2626">${e.message}</td></tr>`; }
 }
 function renderCoupons(items){
-  const box = el('couponsTable').querySelector('tbody');
+  const box = document.getElementById('couponsTable').querySelector('tbody');
   if(!items.length){ box.innerHTML='<tr><td colspan="7">Žádné kupony.</td></tr>'; return; }
   box.innerHTML='';
   items.forEach(c=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${c.code}</td><td>${c.type}</td><td>${c.value}</td>
                   <td>${c.max_uses}</td><td>${c.used}</td><td>${c.min_qty}</td><td>${c.active}</td>`;
-    tr.onclick=()=>fillCouponForm(c);
+    tr.onclick=()=>{
+      document.querySelectorAll('#couponsTable tbody tr').forEach(x=>x.classList.remove('sel'));
+      tr.classList.add('sel');
+      SELECTED_COUPON_CODE = c.code;
+      fillCouponForm(c);
+    };
     box.appendChild(tr);
   });
 }
 function fillCouponForm(c){
-  el('cp_code').value = c.code||'';
-  el('cp_type').value = c.type||'amount';
-  el('cp_value').value = c.value||0;
-  el('cp_maxuses').value = c.max_uses||0;
-  el('cp_minqty').value = c.min_qty||1;
-  el('cp_events').value = c.events||'*';
-  el('cp_stack').value = c.stack_with_siblings ? 'true' : 'false';
-  el('cp_cap').value = c.max_discount || '';
-  el('cp_from').value = (c.valid_from||'').split('T')[0] || '';
-  el('cp_to').value   = (c.valid_to||'').split('T')[0] || '';
-  el('cp_active').value = (c.active?1:0);
-  el('cp_note').value = c.note || '';
+  document.getElementById('cp_code').value = c.code||'';
+  document.getElementById('cp_type').value = c.type||'amount';
+  document.getElementById('cp_value').value = c.value||0;
+  document.getElementById('cp_maxuses').value = c.max_uses||0;
+  document.getElementById('cp_minqty').value = c.min_qty||1;
+  document.getElementById('cp_events').value = c.events||'*';
+  document.getElementById('cp_stack').value = c.stack_with_siblings ? 'true' : 'false';
+  document.getElementById('cp_cap').value = c.max_discount || '';
+  document.getElementById('cp_from').value = (c.valid_from||'').split('T')[0] || '';
+  document.getElementById('cp_to').value   = (c.valid_to||'').split('T')[0] || '';
+  document.getElementById('cp_active').value = (c.active?1:0);
+  document.getElementById('cp_note').value = c.note || '';
 }
 
 /* ==== SAVE HANDLERY ==== */
-el('ev_save').onclick = saveEvent;
-el('ev_reset').onclick = ()=>['ev_id','ev_name','ev_start','ev_duration','ev_capacity','ev_price','ev_sibling'].forEach(i=>el(i).value='');
+document.getElementById('ev_save').onclick = saveEvent;
+document.getElementById('ev_reset').onclick = ()=>['ev_id','ev_name','ev_start','ev_duration','ev_capacity','ev_price','ev_sibling'].forEach(i=>document.getElementById(i).value='');
 async function saveEvent(){
-  el('ev_msg').textContent='';
-  // validace min
-  if(!el('ev_name').value.trim()) { el('ev_msg').textContent='Vyplň název.'; return; }
-  if(!el('ev_start').value) { el('ev_msg').textContent='Vyplň datum a čas.'; return; }
+  const msg = document.getElementById('ev_msg'); msg.textContent='';
+  if(!document.getElementById('ev_name').value.trim()) { msg.textContent='Vyplň název.'; return; }
+  if(!document.getElementById('ev_start').value) { msg.textContent='Vyplň datum a čas.'; return; }
   const payload = {
-    id: el('ev_id').value.trim(),
-    name: el('ev_name').value.trim(),
-    start: el('ev_start').value,               // yyyy-MM-ddTHH:mm
-    duration: Number(el('ev_duration').value||90),
-    capacity: Number(el('ev_capacity').value||0),
-    price: Number(el('ev_price').value||0),
-    sibling_discount: Number(el('ev_sibling').value||0)
+    id: document.getElementById('ev_id').value.trim(),
+    name: document.getElementById('ev_name').value.trim(),
+    start: document.getElementById('ev_start').value,
+    duration: Number(document.getElementById('ev_duration').value||90),
+    capacity: Number(document.getElementById('ev_capacity').value||0),
+    price: Number(document.getElementById('ev_price').value||0),
+    sibling_discount: Number(document.getElementById('ev_sibling').value||0)
   };
   try{
     const r = await fetch(API_URL+'?action=admin_event_upsert&'+authQuery(), {
@@ -349,32 +423,28 @@ async function saveEvent(){
     const j = await r.json();
     if(!j.ok) throw new Error(j.error||'Uložení selhalo');
     await loadEvents();
-    el('ev_msg').style.color='#16a34a';
-    el('ev_msg').textContent='Uloženo.';
-  }catch(e){
-    el('ev_msg').style.color='#dc2626';
-    el('ev_msg').textContent = e.message;
-  }
+    msg.style.color='#16a34a'; msg.textContent='Uloženo.';
+  }catch(e){ msg.style.color='#dc2626'; msg.textContent=e.message; }
 }
 
-el('cp_save').onclick = saveCoupon;
-el('cp_reset').onclick = ()=>['cp_code','cp_type','cp_value','cp_maxuses','cp_minqty','cp_events','cp_stack','cp_cap','cp_from','cp_to','cp_active','cp_note'].forEach(i=>{});
+document.getElementById('cp_save').onclick = saveCoupon;
+document.getElementById('cp_reset').onclick = ()=>['cp_code','cp_type','cp_value','cp_maxuses','cp_minqty','cp_events','cp_stack','cp_cap','cp_from','cp_to','cp_active','cp_note'].forEach(i=>{});
 async function saveCoupon(){
-  el('cp_msg').textContent='';
-  if(!el('cp_code').value.trim()) { el('cp_msg').textContent='Vyplň kód.'; return; }
+  const msg = document.getElementById('cp_msg'); msg.textContent='';
+  if(!document.getElementById('cp_code').value.trim()) { msg.textContent='Vyplň kód.'; return; }
   const payload = {
-    code: el('cp_code').value.trim().toUpperCase(),
-    type: el('cp_type').value,
-    value: Number(el('cp_value').value||0),
-    max_uses: Number(el('cp_maxuses').value||0),
-    min_qty: Number(el('cp_minqty').value||1),
-    events: el('cp_events').value.trim() || '*',
-    stack_with_siblings: (el('cp_stack').value === 'true'),
-    max_discount: el('cp_cap').value ? Number(el('cp_cap').value) : null,
-    valid_from: el('cp_from').value || null,
-    valid_to: el('cp_to').value || null,
-    active: Number(el('cp_active').value||1),
-    note: el('cp_note').value || ''
+    code: document.getElementById('cp_code').value.trim().toUpperCase(),
+    type: document.getElementById('cp_type').value,
+    value: Number(document.getElementById('cp_value').value||0),
+    max_uses: Number(document.getElementById('cp_maxuses').value||0),
+    min_qty: Number(document.getElementById('cp_minqty').value||1),
+    events: document.getElementById('cp_events').value.trim() || '*',
+    stack_with_siblings: (document.getElementById('cp_stack').value === 'true'),
+    max_discount: document.getElementById('cp_cap').value ? Number(document.getElementById('cp_cap').value) : null,
+    valid_from: document.getElementById('cp_from').value || null,
+    valid_to: document.getElementById('cp_to').value || null,
+    active: Number(document.getElementById('cp_active').value||1),
+    note: document.getElementById('cp_note').value || ''
   };
   try{
     const r = await fetch(API_URL+'?action=admin_coupon_upsert&'+authQuery(), {
@@ -385,12 +455,8 @@ async function saveCoupon(){
     const j = await r.json();
     if(!j.ok) throw new Error(j.error||'Uložení selhalo');
     await loadCoupons();
-    el('cp_msg').style.color='#16a34a';
-    el('cp_msg').textContent='Uloženo.';
-  }catch(e){
-    el('cp_msg').style.color='#dc2626';
-    el('cp_msg').textContent = e.message;
-  }
+    msg.style.color='#16a34a'; msg.textContent='Uloženo.';
+  }catch(e){ msg.style.color='#dc2626'; msg.textContent=e.message; }
 }
 
 /* ==== SESSION ==== */
@@ -399,9 +465,8 @@ async function startApp(){
     const r = await fetch(API_URL+'?action=session&'+authQuery());
     const j = await r.json();
     if(!j.ok){ localStorage.removeItem('adm_token'); location.reload(); return; }
-    el('loginCard').style.display='none';
-    el('app').style.display='block';
-    // auto-load po loginu
+    document.getElementById('loginCard').style.display='none';
+    document.getElementById('app').style.display='block';
     await loadEvents();
     await loadCoupons();
   }catch{
