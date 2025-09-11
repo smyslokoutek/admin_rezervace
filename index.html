@@ -18,18 +18,27 @@
 
   <style>
     body{font-family:system-ui,-apple-system,Inter,Roboto,Arial,sans-serif;background:#f9fafb;margin:0}
-    .wrap{max-width:880px;margin:40px auto;padding:20px}
-    .card{background:#fff;padding:20px;margin-bottom:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
+    .wrap{max-width:1040px;margin:40px auto;padding:20px}
+    .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{background:#fff;padding:18px 20px;margin-bottom:16px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
     h1{font-size:22px;margin:0 0 16px}
-    label{display:block;margin-top:12px;font-weight:600}
-    input{width:100%;padding:10px;margin-top:4px;border:1px solid #ddd;border-radius:8px;font-size:15px}
+    h2{font-size:18px;margin:0 0 10px}
+    label{display:block;margin-top:10px;font-weight:600}
+    input,select,textarea{width:100%;padding:10px;margin-top:4px;border:1px solid #ddd;border-radius:8px;font-size:15px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     button{margin-top:14px;padding:10px 16px;border:0;border-radius:8px;background:#111;color:#fff;font-weight:700;cursor:pointer}
     button[disabled]{opacity:.6;cursor:not-allowed}
-    .error{color:#dc2626;margin-top:10px}
+    .muted{color:#6b7280;font-size:13px}
+    .error{color:#dc2626;margin-top:8px}
     nav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
     nav button{background:#e5e7eb;color:#111} nav button.active{background:#111;color:#fff}
     table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
-    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left} th{background:#f3f4f6}
+    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left}
+    th{background:#f3f4f6}
+    tr:hover{background:#fafafa}
+    .right{display:flex;justify-content:flex-end;gap:8px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef2ff}
   </style>
 </head>
 <body>
@@ -57,72 +66,178 @@
     <nav>
       <button data-tab="events" class="active">Termíny</button>
       <button data-tab="coupons">Kupony</button>
-      <button id="logoutBtn" style="margin-left:auto">Odhlásit</button>
+      <div class="right" style="margin-left:auto"><button id="logoutBtn">Odhlásit</button></div>
     </nav>
 
-    <div id="tab-events" class="card">
-      <h2>Termíny</h2>
-      <button id="loadEventsBtn">Načíst termíny</button>
-      <table id="eventsTable"><thead><tr>
-        <th>ID</th><th>Název</th><th>Start</th><th>Kapacita</th><th>Obsazeno</th><th>Cena</th><th>Sleva souroz.</th>
-      </tr></thead><tbody></tbody></table>
+    <!-- TERMÍNY -->
+    <div id="tab-events">
+      <div class="grid">
+        <div class="card">
+          <h2>Seznam termínů</h2>
+          <div class="muted">Kliknutím na řádek vyplníš formulář vpravo.</div>
+          <table id="eventsTable"><thead><tr>
+            <th>ID</th><th>Název</th><th>Start</th><th>Kap.</th><th>Obs.</th><th>Cena</th><th>Sleva souroz.</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+
+        <div class="card">
+          <h2>Nový / úprava termínu</h2>
+          <div class="muted">Uložením se zapíše do listu <span class="pill">Events</span>.</div>
+          <label>ID (prázdné = vygeneruje se z datumu)</label>
+          <input id="ev_id" placeholder="např. 2025-09-23-0900" />
+          <label>Název</label>
+          <input id="ev_name" placeholder="např. Smyslohraní – podzim (Út)" />
+          <div class="row">
+            <div>
+              <label>Start (datum a čas)</label>
+              <input id="ev_start" type="datetime-local" />
+            </div>
+            <div>
+              <label>Délka (min)</label>
+              <input id="ev_duration" type="number" min="10" step="5" value="90" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Kapacita</label>
+              <input id="ev_capacity" type="number" min="0" value="12" />
+            </div>
+            <div>
+              <label>Cena (Kč)</label>
+              <input id="ev_price" type="number" min="0" value="200" />
+            </div>
+          </div>
+          <label>Sleva pro sourozence (Kč / dítě)</label>
+          <input id="ev_sibling" type="number" min="0" value="20" />
+          <div class="right">
+            <button id="ev_reset">Vymazat formulář</button>
+            <button id="ev_save">Uložit termín</button>
+          </div>
+          <div id="ev_msg" class="error"></div>
+        </div>
+      </div>
     </div>
 
-    <div id="tab-coupons" class="card" style="display:none">
-      <h2>Kupony</h2>
-      <button id="loadCouponsBtn">Načíst kupony</button>
-      <table id="couponsTable"><thead><tr>
-        <th>Kód</th><th>Typ</th><th>Hodnota</th><th>Max použ.</th><th>Vyčerpáno</th><th>Aktivní</th>
-      </tr></thead><tbody></tbody></table>
+    <!-- KUPONY -->
+    <div id="tab-coupons" style="display:none">
+      <div class="grid">
+        <div class="card">
+          <h2>Seznam kuponů</h2>
+          <div class="muted">Kliknutím na řádek vyplníš formulář vpravo.</div>
+          <table id="couponsTable"><thead><tr>
+            <th>Kód</th><th>Typ</th><th>Hodnota</th><th>Max použ.</th><th>Vyčerpáno</th><th>Min qty</th><th>Aktivní</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+
+        <div class="card">
+          <h2>Nový / úprava kuponu</h2>
+          <div class="muted">Uložením se zapíše do listu <span class="pill">Coupons</span>.</div>
+          <label>Kód (např. ABC20)</label>
+          <input id="cp_code" placeholder="ABC20" />
+          <div class="row">
+            <div>
+              <label>Typ</label>
+              <select id="cp_type">
+                <option value="amount">amount (Kč)</option>
+                <option value="percent">percent (%)</option>
+                <option value="free">free (počet míst)</option>
+                <option value="bogo">bogo (1+1, qty=2)</option>
+              </select>
+            </div>
+            <div>
+              <label>Hodnota</label>
+              <input id="cp_value" type="number" min="0" value="20" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Max. použití (0 = neomezeně)</label>
+              <input id="cp_maxuses" type="number" min="0" value="1" />
+            </div>
+            <div>
+              <label>Min. qty</label>
+              <input id="cp_minqty" type="number" min="1" value="1" />
+            </div>
+          </div>
+          <label>Události (id oddělené čárkou, * = všechny)</label>
+          <input id="cp_events" placeholder="*" />
+          <div class="row">
+            <div>
+              <label>Stack se sourozenci?</label>
+              <select id="cp_stack"><option value="true">TRUE</option><option value="false">FALSE</option></select>
+            </div>
+            <div>
+              <label>Max sleva (Kč; jen pro %; prázdné = bez stropu)</label>
+              <input id="cp_cap" type="number" min="0" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Platnost od</label>
+              <input id="cp_from" type="date" />
+            </div>
+            <div>
+              <label>Platnost do</label>
+              <input id="cp_to" type="date" />
+            </div>
+          </div>
+          <label>Aktivní</label>
+          <select id="cp_active"><option value="1">1</option><option value="0">0</option></select>
+          <label>Poznámka</label>
+          <input id="cp_note" />
+          <div class="right">
+            <button id="cp_reset">Vymazat formulář</button>
+            <button id="cp_save">Uložit kupon</button>
+          </div>
+          <div id="cp_msg" class="error"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbzAJh9wVawvTfLUfsi7qqtkxyaT5Hpm69gyAlwNROW8N5S-MEIrOSW541caGaRQ5ysl_g/exec'; // ← případně změň na své /exec
+/* ==== KONFIG ==== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbzAJh9wVawvTfLUfsi7qqtkxyaT5Hpm69gyAlwNROW8N5S-MEIrOSW541caGaRQ5ysl_g/exec'; // případně uprav
 
+/* ==== UI HELPERY ==== */
 const el = id => document.getElementById(id);
 const errEmail = el('msgEmail'), errOtp = el('msgOtp');
+function authQuery(){ const t = localStorage.getItem('adm_token') || ''; return 'Authorization='+encodeURIComponent('Bearer '+t); }
 
-// token posíláme v URL query (GAS ho přečte z e.parameter.Authorization)
-function authQuery() {
-  const t = localStorage.getItem('adm_token') || '';
-  return 'Authorization=' + encodeURIComponent('Bearer ' + t);
+/* ==== OTP ==== */
+el('sendOtpBtn').onclick = sendOtp;
+el('verifyOtpBtn').onclick = verifyOtp;
+el('email').addEventListener('keydown', e=>{ if(e.key==='Enter') sendOtp(); });
+el('otp').addEventListener('keydown', e=>{ if(e.key==='Enter') verifyOtp(); });
+
+async function sendOtp(){
+  const email = el('email').value.trim().toLowerCase();
+  errEmail.textContent='';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEmail.textContent='Zadejte platný e-mail.'; return; }
+  const btn = el('sendOtpBtn'); btn.disabled=true; btn.textContent='Odesílám…';
+  try{
+    const r = await fetch(API_URL+'?action=auth_request_otp',{ method:'POST', headers:{ 'Content-Type':'text/plain; charset=utf-8' }, body:JSON.stringify({ email }) });
+    const j = await r.json();
+    if(!j.ok){ errEmail.textContent = j.error || 'Nepodařilo se odeslat kód.'; btn.disabled=false; btn.textContent='Poslat kód'; return; }
+    el('stepEmail').style.display='none'; el('stepOtp').style.display='block';
+    errOtp.textContent='Kód odeslán (platí 5 min). Zkontrolujte i spam.';
+  }catch{ errEmail.textContent='Chyba sítě – zkuste znovu.'; }
+  finally{ setTimeout(()=>{ btn.disabled=false; btn.textContent='Poslat kód'; }, 30000); }
 }
 
-// OTP: poslat kód
-el('sendOtpBtn').onclick = async ()=>{
-  const email = el('email').value.trim();
-  errEmail.textContent = '';
-  const r = await fetch(API_URL+'?action=auth_request_otp', {
-    method:'POST',
-    headers:{ 'Content-Type': 'text/plain; charset=utf-8' },
-    body: JSON.stringify({ email })
-  });
-  const j = await r.json();
-  if(!j.ok){ errEmail.textContent = j.error || 'Chyba při odeslání kódu.'; return; }
-  el('stepEmail').style.display='none'; el('stepOtp').style.display='block';
-};
-
-// OTP: ověřit
-el('verifyOtpBtn').onclick = async ()=>{
-  const email = el('email').value.trim();
+async function verifyOtp(){
+  const email = el('email').value.trim().toLowerCase();
   const code  = el('otp').value.trim();
-  errOtp.textContent = '';
-  const r = await fetch(API_URL+'?action=auth_verify_otp', {
-    method:'POST',
-    headers:{ 'Content-Type': 'text/plain; charset=utf-8' },
-    body: JSON.stringify({ email, code })
-  });
+  errOtp.textContent='';
+  const r = await fetch(API_URL+'?action=auth_verify_otp',{ method:'POST', headers:{ 'Content-Type':'text/plain; charset=utf-8' }, body:JSON.stringify({ email, code }) });
   const j = await r.json();
   if(!j.ok){ errOtp.textContent = j.error || 'Chybný kód.'; return; }
   localStorage.setItem('adm_token', j.token);
   startApp();
-};
+}
 
-el('logoutBtn').onclick = ()=>{ localStorage.removeItem('adm_token'); location.reload(); };
-
-// Tabs
+/* ==== TABS & LOGOUT ==== */
 document.querySelectorAll('nav button[data-tab]').forEach(b=>{
   b.onclick=()=>{
     document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
@@ -131,46 +246,167 @@ document.querySelectorAll('nav button[data-tab]').forEach(b=>{
     el('tab-'+b.dataset.tab).style.display='block';
   };
 });
+el('logoutBtn').onclick = ()=>{ localStorage.removeItem('adm_token'); location.reload(); };
 
-// Načtení termínů (token v query)
-el('loadEventsBtn').onclick = loadEvents;
+/* ==== LOADERS ==== */
 async function loadEvents(){
-  const r=await fetch(API_URL+'?action=admin_events_list&'+authQuery());
-  const j=await r.json();
-  if(!j.ok){ alert(j.error||'Chyba načtení.'); return; }
-  const tb=el('eventsTable').querySelector('tbody'); tb.innerHTML='';
-  j.items.forEach(ev=>{
+  const box = el('eventsTable').querySelector('tbody');
+  box.innerHTML='<tr><td colspan="7">Načítám…</td></tr>';
+  try{
+    const r = await fetch(API_URL+'?action=admin_events_list&'+authQuery());
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error||'Chyba načtení');
+    renderEvents(j.items||[]);
+  }catch(e){ box.innerHTML = `<tr><td colspan="7" style="color:#dc2626">${e.message}</td></tr>`; }
+}
+function renderEvents(items){
+  const box = el('eventsTable').querySelector('tbody');
+  if(!items.length){ box.innerHTML='<tr><td colspan="7">Žádné termíny.</td></tr>'; return; }
+  box.innerHTML='';
+  items.forEach(ev=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${ev.id}</td><td>${ev.name}</td><td>${ev.start}</td>
                   <td>${ev.capacity}</td><td>${ev.taken}</td><td>${ev.price}</td>
                   <td>${ev.sibling_discount}</td>`;
-    tb.appendChild(tr);
+    tr.onclick=()=>fillEventForm(ev);
+    box.appendChild(tr);
   });
 }
+function fillEventForm(ev){
+  el('ev_id').value = ev.id||'';
+  el('ev_name').value = ev.name||'';
+  // převod ISO na datetime-local (yyyy-MM-ddTHH:mm)
+  try{
+    const d=new Date(ev.start); const pad=n=>String(n).padStart(2,'0');
+    el('ev_start').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }catch{}
+  el('ev_duration').value = ev.duration||90;
+  el('ev_capacity').value = ev.capacity||0;
+  el('ev_price').value = ev.price||0;
+  el('ev_sibling').value = ev.sibling_discount||0;
+}
 
-// Načtení kuponů (token v query)
-el('loadCouponsBtn').onclick = loadCoupons;
 async function loadCoupons(){
-  const r=await fetch(API_URL+'?action=admin_coupons_list&'+authQuery());
-  const j=await r.json();
-  if(!j.ok){ alert(j.error||'Chyba načtení.'); return; }
-  const tb=el('couponsTable').querySelector('tbody'); tb.innerHTML='';
-  j.items.forEach(c=>{
+  const box = el('couponsTable').querySelector('tbody');
+  box.innerHTML='<tr><td colspan="7">Načítám…</td></tr>';
+  try{
+    const r = await fetch(API_URL+'?action=admin_coupons_list&'+authQuery());
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error||'Chyba načtení');
+    renderCoupons(j.items||[]);
+  }catch(e){ box.innerHTML = `<tr><td colspan="7" style="color:#dc2626">${e.message}</td></tr>`; }
+}
+function renderCoupons(items){
+  const box = el('couponsTable').querySelector('tbody');
+  if(!items.length){ box.innerHTML='<tr><td colspan="7">Žádné kupony.</td></tr>'; return; }
+  box.innerHTML='';
+  items.forEach(c=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${c.code}</td><td>${c.type}</td><td>${c.value}</td>
-                  <td>${c.max_uses}</td><td>${c.used}</td><td>${c.active}</td>`;
-    tb.appendChild(tr);
+                  <td>${c.max_uses}</td><td>${c.used}</td><td>${c.min_qty}</td><td>${c.active}</td>`;
+    tr.onclick=()=>fillCouponForm(c);
+    box.appendChild(tr);
   });
 }
+function fillCouponForm(c){
+  el('cp_code').value = c.code||'';
+  el('cp_type').value = c.type||'amount';
+  el('cp_value').value = c.value||0;
+  el('cp_maxuses').value = c.max_uses||0;
+  el('cp_minqty').value = c.min_qty||1;
+  el('cp_events').value = c.events||'*';
+  el('cp_stack').value = c.stack_with_siblings ? 'true' : 'false';
+  el('cp_cap').value = c.max_discount || '';
+  el('cp_from').value = (c.valid_from||'').split('T')[0] || '';
+  el('cp_to').value   = (c.valid_to||'').split('T')[0] || '';
+  el('cp_active').value = (c.active?1:0);
+  el('cp_note').value = c.note || '';
+}
 
-// Session check (token v query)
+/* ==== SAVE HANDLERY ==== */
+el('ev_save').onclick = saveEvent;
+el('ev_reset').onclick = ()=>['ev_id','ev_name','ev_start','ev_duration','ev_capacity','ev_price','ev_sibling'].forEach(i=>el(i).value='');
+async function saveEvent(){
+  el('ev_msg').textContent='';
+  // validace min
+  if(!el('ev_name').value.trim()) { el('ev_msg').textContent='Vyplň název.'; return; }
+  if(!el('ev_start').value) { el('ev_msg').textContent='Vyplň datum a čas.'; return; }
+  const payload = {
+    id: el('ev_id').value.trim(),
+    name: el('ev_name').value.trim(),
+    start: el('ev_start').value,               // yyyy-MM-ddTHH:mm
+    duration: Number(el('ev_duration').value||90),
+    capacity: Number(el('ev_capacity').value||0),
+    price: Number(el('ev_price').value||0),
+    sibling_discount: Number(el('ev_sibling').value||0)
+  };
+  try{
+    const r = await fetch(API_URL+'?action=admin_event_upsert&'+authQuery(), {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain; charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error||'Uložení selhalo');
+    await loadEvents();
+    el('ev_msg').style.color='#16a34a';
+    el('ev_msg').textContent='Uloženo.';
+  }catch(e){
+    el('ev_msg').style.color='#dc2626';
+    el('ev_msg').textContent = e.message;
+  }
+}
+
+el('cp_save').onclick = saveCoupon;
+el('cp_reset').onclick = ()=>['cp_code','cp_type','cp_value','cp_maxuses','cp_minqty','cp_events','cp_stack','cp_cap','cp_from','cp_to','cp_active','cp_note'].forEach(i=>{});
+async function saveCoupon(){
+  el('cp_msg').textContent='';
+  if(!el('cp_code').value.trim()) { el('cp_msg').textContent='Vyplň kód.'; return; }
+  const payload = {
+    code: el('cp_code').value.trim().toUpperCase(),
+    type: el('cp_type').value,
+    value: Number(el('cp_value').value||0),
+    max_uses: Number(el('cp_maxuses').value||0),
+    min_qty: Number(el('cp_minqty').value||1),
+    events: el('cp_events').value.trim() || '*',
+    stack_with_siblings: (el('cp_stack').value === 'true'),
+    max_discount: el('cp_cap').value ? Number(el('cp_cap').value) : null,
+    valid_from: el('cp_from').value || null,
+    valid_to: el('cp_to').value || null,
+    active: Number(el('cp_active').value||1),
+    note: el('cp_note').value || ''
+  };
+  try{
+    const r = await fetch(API_URL+'?action=admin_coupon_upsert&'+authQuery(), {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain; charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error||'Uložení selhalo');
+    await loadCoupons();
+    el('cp_msg').style.color='#16a34a';
+    el('cp_msg').textContent='Uloženo.';
+  }catch(e){
+    el('cp_msg').style.color='#dc2626';
+    el('cp_msg').textContent = e.message;
+  }
+}
+
+/* ==== SESSION ==== */
 async function startApp(){
-  const r = await fetch(API_URL+'?action=session&'+authQuery());
-  const j = await r.json();
-  if(!j.ok){ localStorage.removeItem('adm_token'); location.reload(); return; }
-  el('loginCard').style.display='none'; el('app').style.display='block';
-  // volitelně rovnou načti data
-  // loadEvents(); loadCoupons();
+  try{
+    const r = await fetch(API_URL+'?action=session&'+authQuery());
+    const j = await r.json();
+    if(!j.ok){ localStorage.removeItem('adm_token'); location.reload(); return; }
+    el('loginCard').style.display='none';
+    el('app').style.display='block';
+    // auto-load po loginu
+    await loadEvents();
+    await loadCoupons();
+  }catch{
+    localStorage.removeItem('adm_token'); location.reload();
+  }
 }
 if(localStorage.getItem('adm_token')) startApp();
 </script>
