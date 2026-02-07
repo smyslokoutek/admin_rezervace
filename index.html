@@ -34,7 +34,7 @@
     nav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
     nav button{background:#e5e7eb;color:#111} nav button.active{background:#111;color:#fff}
     table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
-    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left}
+    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left;vertical-align:top}
     th{background:#f3f4f6}
     tr:hover{background:#fafafa}
     .right{display:flex;justify-content:flex-end;gap:8px}
@@ -43,20 +43,16 @@
     .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef2ff}
     .log{margin:10px 0;padding:10px;border-radius:8px;background:#fff;border:1px dashed #e5e7eb;font:12px/1.5 ui-monospace,Menlo,monospace;max-height:160px;overflow:auto;white-space:pre-wrap}
 
-    /* --- BOOKINGS UX --- */
-    .table-wrap{overflow:auto; border-radius:12px; border:1px solid #e5e7eb; background:#fff}
-    table{background:#fff}
-    thead th{position:sticky; top:0; z-index:2}
-    .kpi{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
-    .kpi .pill{background:#f3f4f6}
-    .kpi strong{font-variant-numeric:tabular-nums}
-    a.mini{color:#111; text-decoration:none; border-bottom:1px dashed #cbd5e1}
-    a.mini:hover{border-bottom-color:#111}
-    .smallbtn{padding:8px 12px; border-radius:10px; background:#111; color:#fff; font-weight:700; border:0; cursor:pointer; margin-top:0}
-    .smallbtn.ghost{background:#e5e7eb; color:#111}
-    .smallbtn[disabled]{opacity:.6; cursor:not-allowed}
-    .row-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
-    .note{font-size:12px;color:#6b7280}
+    /* ===== KAPACITNÍ RADAR UI ===== */
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+    .b-sold{background:#111;color:#fff}
+    .b-high{background:#fee2e2;color:#991b1b}
+    .b-ok{background:#e0e7ff;color:#1e3a8a}
+    .b-low{background:#e5e7eb;color:#374151}
+    .b-urg{background:#fef3c7;color:#92400e}
+    .mono{font:12px/1.4 ui-monospace,Menlo,monospace;color:#374151}
+    .radarCell{min-width:240px}
+    .mini{display:block;margin-top:2px;color:#6b7280;font-size:12px}
   </style>
 </head>
 <body>
@@ -101,7 +97,7 @@
           </div>
           <div class="muted">Kliknutím vybereš termín pro úpravu / export / archivaci.</div>
           <table id="eventsTable"><thead><tr>
-            <th>ID</th><th>Název</th><th>Start</th><th>Kap.</th><th>Obs.</th><th>Cena</th><th>Sleva souroz.</th>
+            <th>ID</th><th>Název</th><th>Start</th><th>Kap.</th><th>Obs.</th><th>Radar</th><th>ETA</th><th>Cena</th><th>Sleva souroz.</th>
           </tr></thead><tbody></tbody></table>
         </div>
         <div class="card">
@@ -173,47 +169,16 @@
     <div id="tab-bookings" style="display:none">
       <div class="card">
         <h2>Rezervace</h2>
-
         <div class="toolbar">
           <select id="b_ev" style="min-width:320px"><option value="">(všechny události)</option></select>
-
           <input id="b_from" type="date" />
           <input id="b_to" type="date" />
-
-          <select id="b_pay" style="min-width:160px">
-            <option value="">(platba: vše)</option>
-            <option value="cash">cash</option>
-            <option value="transfer">transfer</option>
-          </select>
-
           <input id="b_q" placeholder="Hledat (jméno, e-mail, tel.)" style="flex:1" />
-
-          <select id="b_ps" style="min-width:120px">
-            <option value="50">50 / str</option>
-            <option value="100">100 / str</option>
-            <option value="200">200 / str</option>
-          </select>
-
-          <div class="row-actions">
-            <button class="smallbtn ghost" id="b_today">Dnes</button>
-            <button class="smallbtn ghost" id="b_week">Týden</button>
-            <button class="smallbtn ghost" id="b_month">Měsíc</button>
-          </div>
-
-          <button class="smallbtn" id="b_reload">Načíst</button>
-          <button class="smallbtn ghost" id="b_more">Načíst další</button>
-
-          <button class="smallbtn" id="b_export">Export události</button>
+          <button id="b_export">Export aktuálního výběru</button>
         </div>
-
-        <div class="kpi" id="b_kpi"></div>
-        <div class="note" id="b_pageinfo" style="margin-top:6px"></div>
-
-        <div class="table-wrap" style="margin-top:10px">
-          <table id="bookingsTable"><thead><tr>
-            <th>TS</th><th>Event</th><th>Jméno</th><th>Email</th><th>Tel</th><th>Míst</th><th>Platba</th><th>Celkem</th>
-          </tr></thead><tbody></tbody></table>
-        </div>
+        <table id="bookingsTable"><thead><tr>
+          <th>TS</th><th>Event</th><th>Jméno</th><th>Email</th><th>Tel</th><th>Míst</th><th>Platba</th><th>Celkem</th>
+        </tr></thead><tbody></tbody></table>
       </div>
 
       <div class="card">
@@ -297,6 +262,108 @@ async function apiFetch(url, opts={}){
   }
 }
 
+/* ===== KAPACITNÍ RADAR ===== */
+const RADAR_WINDOW_DAYS = 30;      // ✅ 30 dní (dle tvého provozu)
+const RADAR_URGENT_DAYS = 3;       // termín brzy => urgent
+const RADAR_LOW_RATE = 0.08;       // ~2.4 místa / 30 dní => low demand (pro 8–12 kapacitu dává smysl)
+const RADAR_HIGH_FACTOR = 1.10;    // pokud ETA vyprodání <= 1.10× dní do startu => high demand
+
+function daysDiff_(a, b){
+  const ms = 24*60*60*1000;
+  return Math.round((b - a)/ms);
+}
+function clamp_(n, a, b){ return Math.max(a, Math.min(b, n)); }
+function escapeHtml_(s){
+  return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function badge_(cls, text, title=''){
+  const t = title ? ` title="${escapeHtml_(title)}"` : '';
+  return `<span class="badge ${cls}"${t}>${text}</span>`;
+}
+
+async function fetchBookingsRange_(fromISO, toISO){
+  let page = 1;
+  const pageSize = 200;
+  let all = [];
+  while(true){
+    const p = new URLSearchParams({
+      action:'admin_bookings_list',
+      from: fromISO,
+      to: toISO,
+      page: String(page),
+      pageSize: String(pageSize)
+    });
+    const j = await apiFetch(API_URL+'?'+p.toString()+'&'+authQuery(), { method:'GET' });
+    if(!j.ok) throw new Error(j.error||'Chyba načtení rezervací pro radar');
+    all = all.concat(j.items||[]);
+    if((j.items||[]).length < pageSize) break;
+    page++;
+    if(page > 15) break; // ~3000 řádků (pro 20 termínů/měsíc je to bezpečné)
+  }
+  return all;
+}
+
+function computeRadarMap_(events, bookings){
+  const now = new Date();
+  const byEv = new Map();
+
+  bookings.forEach(b=>{
+    const id = String(b.eventId||'');
+    const qty = Number(b.qty||1);
+    byEv.set(id, (byEv.get(id)||0) + qty);
+  });
+
+  const map = {};
+  events.forEach(ev=>{
+    const cap = Number(ev.capacity||0);
+    const taken = Number(ev.taken||0);
+    const left = cap - taken;
+
+    const start = new Date(ev.start);
+    const daysToStart = clamp_(daysDiff_(now, start), -9999, 9999);
+
+    const windowSum = Number(byEv.get(String(ev.id))||0);
+    const velocity = windowSum / RADAR_WINDOW_DAYS; // místa/den
+    const etaDays = (velocity > 0) ? (left / velocity) : null;
+
+    let cls='b-ok', text='STABILNÍ';
+    let etaText = (etaDays != null) ? `~${Math.ceil(etaDays)} dní` : '—';
+
+    const detail = [
+      `Volno: ${left}/${cap}`,
+      `Tempo: ${velocity.toFixed(2)} míst/den (za ${RADAR_WINDOW_DAYS} dnů: ${windowSum})`,
+      `Do startu: ${daysToStart} dní`,
+      etaDays!=null ? `ETA vyprodáno: ~${Math.ceil(etaDays)} dní` : `ETA vyprodáno: neznámé`
+    ].join('\n');
+
+    if(left <= 0){
+      cls='b-sold'; text='VYPRODÁNO'; etaText='—';
+    } else if(daysToStart <= RADAR_URGENT_DAYS){
+      if(velocity <= RADAR_LOW_RATE){
+        cls='b-urg'; text='URGENT'; etaText='brzy';
+      } else {
+        cls='b-ok'; text='BLÍZKO'; etaText = etaDays!=null ? `~${Math.ceil(etaDays)} dní` : '—';
+      }
+    } else if(velocity <= RADAR_LOW_RATE){
+      cls='b-low'; text='LOW DEMAND'; etaText='—';
+    } else if(etaDays != null && etaDays <= (daysToStart * RADAR_HIGH_FACTOR)){
+      cls='b-high'; text='HIGH DEMAND'; etaText = `~${Math.ceil(etaDays)} dní`;
+    } else {
+      cls='b-ok'; text='STABILNÍ'; etaText = etaDays!=null ? `~${Math.ceil(etaDays)} dní` : '—';
+    }
+
+    map[String(ev.id)] = {
+      velocityPerDay: velocity,
+      etaDays,
+      labelHtml: badge_(cls, text, detail) + ` <span class="mono">(${velocity.toFixed(2)}/den)</span>` +
+        `<span class="mini">30 dní: ${windowSum} míst</span>`,
+      etaText
+    };
+  });
+
+  return map;
+}
+
 /* ===== OTP ===== */
 el('sendOtpBtn').onclick = async ()=>{
   const email = el('email').value.trim().toLowerCase();
@@ -375,7 +442,7 @@ el('ev_archive').onclick = async ()=>{
 
 async function loadEvents(){
   const box=el('eventsTable').querySelector('tbody');
-  box.innerHTML='<tr><td colspan="7">Načítám…</td></tr>';
+  box.innerHTML='<tr><td colspan="9">Načítám…</td></tr>';
 
   try{
     const p=new URLSearchParams({
@@ -386,20 +453,48 @@ async function loadEvents(){
     });
     const j = await apiFetch(API_URL+'?'+p.toString()+'&'+authQuery(), { method:'GET' });
     if(!j.ok) throw new Error(j.error||'Chyba načtení');
-    renderEvents(j.items||[]);
+
+    const events = j.items || [];
+    renderEvents(events); // rychle vykresli bez radaru
+
+    // Radar: rezervace za posledních 30 dnů
+    const now = new Date();
+    const from = new Date(now.getTime() - RADAR_WINDOW_DAYS*24*60*60*1000);
+    const fromISO = from.toISOString().slice(0,10);
+    const toISO = now.toISOString().slice(0,10);
+
+    const bookings = await fetchBookingsRange_(fromISO, toISO);
+    const radarMap = computeRadarMap_(events, bookings);
+
+    renderEvents(events, radarMap); // překresli s radarem
   }catch(e){
-    box.innerHTML=`<tr><td colspan="7" style="color:#dc2626">${e.message}</td></tr>`;
+    box.innerHTML=`<tr><td colspan="9" style="color:#dc2626">${e.message}</td></tr>`;
     logDbg(String(e));
   }
 }
-function renderEvents(items){
+
+function renderEvents(items, radarMap = null){
   const box=el('eventsTable').querySelector('tbody');
   SELECTED_EVENT_ID='';
-  if(!items.length){ box.innerHTML='<tr><td colspan="7">Žádné termíny.</td></tr>'; return; }
+  if(!items.length){ box.innerHTML='<tr><td colspan="9">Žádné termíny.</td></tr>'; return; }
   box.innerHTML='';
   items.forEach(ev=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${ev.id}</td><td>${ev.name}</td><td>${ev.start}</td><td>${ev.capacity}</td><td>${ev.taken}</td><td>${ev.price}</td><td>${ev.sibling_discount}</td>`;
+
+    const r = radarMap ? radarMap[String(ev.id)] : null;
+    const radarHtml = r ? `<div class="radarCell">${r.labelHtml}</div>` : `<span class="badge b-low">RADAR…</span>`;
+    const etaHtml = r ? r.etaText : '—';
+
+    tr.innerHTML=
+      `<td>${ev.id}</td>
+       <td>${ev.name}</td>
+       <td>${ev.start}</td>
+       <td>${ev.capacity}</td>
+       <td>${ev.taken}</td>
+       <td>${radarHtml}</td>
+       <td class="mono">${etaHtml}</td>
+       <td>${ev.price}</td>
+       <td>${ev.sibling_discount}</td>`;
 
     const onPick = ()=>{
       setSel(tr,'#eventsTable');
@@ -412,6 +507,7 @@ function renderEvents(items){
     box.appendChild(tr);
   });
 }
+
 function fillEventForm(ev){
   el('ev_id').value=ev.id||'';
   el('ev_name').value=ev.name||'';
@@ -436,7 +532,7 @@ el('ev_save').onclick = async ()=>{
   const payload={
     id: el('ev_id').value.trim(),
     name: el('ev_name').value.trim(),
-    start: el('ev_start').value, // datetime-local string
+    start: el('ev_start').value,
     duration: Number(el('ev_duration').value||90),
     capacity: Number(el('ev_capacity').value||0),
     price: Number(el('ev_price').value||0),
@@ -454,14 +550,6 @@ el('ev_save').onclick = async ()=>{
     msg.textContent=String(e);
     logDbg(String(e));
   }
-};
-
-el('ev_reset').onclick = ()=>{
-  SELECTED_EVENT_ID='';
-  document.querySelectorAll(`#eventsTable tbody tr`).forEach(x=>x.classList.remove('sel'));
-  ['ev_id','ev_name','ev_start','ev_duration','ev_capacity','ev_price','ev_sibling'].forEach(id=>el(id).value='');
-  el('ev_duration').value=90; el('ev_capacity').value=12; el('ev_price').value=200; el('ev_sibling').value=20;
-  el('ev_msg').textContent='';
 };
 
 /* ===== COUPONS ===== */
@@ -557,81 +645,16 @@ el('cp_save').onclick = async ()=>{
   }
 };
 
-el('cp_reset').onclick = ()=>{
-  SELECTED_COUPON_CODE='';
-  document.querySelectorAll(`#couponsTable tbody tr`).forEach(x=>x.classList.remove('sel'));
-  ['cp_code','cp_value','cp_maxuses','cp_minqty','cp_events','cp_cap','cp_from','cp_to','cp_note'].forEach(id=>el(id).value='');
-  el('cp_type').value='amount';
-  el('cp_stack').value='true';
-  el('cp_active').value='1';
-  el('cp_msg').textContent='';
-};
-
 /* ===== BOOKINGS ===== */
 el('b_export').onclick = ()=>{
   const v=el('b_ev').value;
-  if(!v){ alert('Pro export vyber konkrétní událost v rozbalovačce.'); return; }
+  if(!v){ alert('Vyber událost v rozbalovačce.'); return; }
   window.location.href = API_URL+'?action=admin_bookings_export&eventId='+encodeURIComponent(v)+'&'+authQuery();
 };
-
-// --- Bookings state ---
-let B_PAGE = 1;
-let B_TOTAL = 0;
-let B_LAST_ITEMS = [];
-let B_APPEND = false;
-
-function debounce(fn, ms=300){
-  let t=null;
-  return (...args)=>{
-    clearTimeout(t);
-    t=setTimeout(()=>fn(...args), ms);
-  };
-}
-function fmtKc(n){
-  const x = Number(n||0);
-  return x.toLocaleString('cs-CZ') + ' Kč';
-}
-function setDateRange(fromDate, toDate){
-  el('b_from').value = fromDate;
-  el('b_to').value = toDate;
-}
-function isoDate(d){
-  const pad=n=>String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
-
-const loadBookingsDebounced = debounce(()=>{ B_PAGE=1; B_APPEND=false; loadBookings(); }, 350);
-
-['b_ev','b_from','b_to','b_pay','b_ps'].forEach(id=>{
+['b_ev','b_from','b_to','b_q'].forEach(id=>{
   const x=el(id);
-  if(x) x.addEventListener('input', ()=>{ B_PAGE=1; B_APPEND=false; loadBookings(); });
+  if(x) x.addEventListener('input', ()=>loadBookings());
 });
-el('b_q').addEventListener('input', loadBookingsDebounced);
-
-el('b_reload').onclick = ()=>{ B_PAGE=1; B_APPEND=false; loadBookings(); };
-el('b_more').onclick = ()=>{ B_PAGE = Math.max(1, B_PAGE + 1); B_APPEND=true; loadBookings(); };
-
-el('b_today').onclick = ()=>{
-  const d = new Date();
-  const s = isoDate(d);
-  setDateRange(s,s);
-  B_PAGE=1; B_APPEND=false; loadBookings();
-};
-el('b_week').onclick = ()=>{
-  const now = new Date();
-  const day = (now.getDay()+6)%7; // Po=0
-  const mon = new Date(now); mon.setDate(now.getDate()-day);
-  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
-  setDateRange(isoDate(mon), isoDate(sun));
-  B_PAGE=1; B_APPEND=false; loadBookings();
-};
-el('b_month').onclick = ()=>{
-  const now = new Date();
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  const last  = new Date(now.getFullYear(), now.getMonth()+1, 0);
-  setDateRange(isoDate(first), isoDate(last));
-  B_PAGE=1; B_APPEND=false; loadBookings();
-};
 
 async function loadEventDropdown(){
   const j = await apiFetch(API_URL+'?action=admin_events_dropdown', { method:'GET' });
@@ -646,12 +669,9 @@ async function loadEventDropdown(){
     });
   }
 }
-
 async function loadBookings(){
   const tb=el('bookingsTable').querySelector('tbody');
-  if(!B_APPEND) tb.innerHTML='<tr><td colspan="8">Načítám…</td></tr>';
-
-  const pageSize = String(el('b_ps').value||'50');
+  tb.innerHTML='<tr><td colspan="8">Načítám…</td></tr>';
 
   const p=new URLSearchParams({
     action:'admin_bookings_list',
@@ -659,8 +679,8 @@ async function loadBookings(){
     from: el('b_from').value||'',
     to: el('b_to').value||'',
     q: el('b_q').value||'',
-    page: String(B_PAGE),
-    pageSize
+    page:'1',
+    pageSize:'200'
   });
 
   const j = await apiFetch(API_URL+'?'+p.toString()+'&'+authQuery(), { method:'GET' });
@@ -669,56 +689,27 @@ async function loadBookings(){
     return;
   }
 
-  // lokální filtr platby (API ho neumí)
-  let items = (j.items||[]);
-  const pay = el('b_pay').value;
-  if(pay) items = items.filter(x => String(x.payment||'') === pay);
-
-  B_TOTAL = Number(j.total||items.length||0);
-
-  if(!B_APPEND){
-    B_LAST_ITEMS = items;
-    tb.innerHTML='';
-  } else {
-    B_LAST_ITEMS = B_LAST_ITEMS.concat(items);
-  }
-
-  if(!B_LAST_ITEMS.length){
+  tb.innerHTML='';
+  if(!(j.items||[]).length){
     tb.innerHTML='<tr><td colspan="8">Žádné rezervace.</td></tr>';
-    renderBookingsKpi_([]);
-    renderPageInfo_();
     return;
   }
 
-  const listToRender = B_APPEND ? items : B_LAST_ITEMS;
-  listToRender.forEach(bk=>{
+  (j.items||[]).forEach(bk=>{
     const tr=document.createElement('tr');
 
-    const tsRaw = String(bk.ts ?? '');      // ✅ KLÍČ: posíláme zpět přesně, co přišlo z API
-    const tsDate = new Date(bk.ts);
+    let tsIso = '';
+    try{
+      const d = new Date(bk.ts);
+      tsIso = !isNaN(d.getTime()) ? d.toISOString() : String(bk.ts||'');
+    }catch{ tsIso = String(bk.ts||''); }
 
-    const tsHuman = isNaN(tsDate.getTime())
-      ? tsRaw
-      : tsDate.toLocaleString('cs-CZ');
-
-    const email = String(bk.email||'');
-    const phone = String(bk.phone||'');
-
-    tr.innerHTML = `
-      <td>${tsHuman}</td>
-      <td>${bk.eventId||''}</td>
-      <td>${bk.name||''}</td>
-      <td>${email ? `<a class="mini" href="mailto:${email}">${email}</a>` : ''}</td>
-      <td>${phone ? `<a class="mini" href="tel:${phone}">${phone}</a>` : ''}</td>
-      <td>${bk.qty ?? ''}</td>
-      <td>${bk.payment||''}</td>
-      <td>${bk.total||0}</td>
-    `;
+    tr.innerHTML=`<td>${new Date(bk.ts).toLocaleString('cs-CZ')}</td><td>${bk.eventId}</td><td>${bk.name||''}</td>
+      <td>${bk.email||''}</td><td>${bk.phone||''}</td><td>${bk.qty}</td><td>${bk.payment||''}</td><td>${bk.total||0}</td>`;
 
     const onPick = ()=>{
       setSel(tr,'#bookingsTable');
-
-      BOOKING_KEY = { ts: tsRaw, eventId: String(bk.eventId||'') };
+      BOOKING_KEY = { ts: tsIso, eventId: bk.eventId };
 
       el('bk_name').value=bk.name||'';
       el('bk_qty').value=bk.qty||0;
@@ -732,40 +723,7 @@ async function loadBookings(){
 
     tb.appendChild(tr);
   });
-
-  renderBookingsKpi_(B_LAST_ITEMS);
-  renderPageInfo_();
 }
-
-function renderBookingsKpi_(items){
-  const k = el('b_kpi');
-  const count = items.length;
-
-  let sumQty=0, sumTotal=0, cashTotal=0, transferTotal=0, cashCount=0, transferCount=0;
-  items.forEach(x=>{
-    const q = Number(x.qty||0);
-    const t = Number(x.total||0);
-    sumQty += q;
-    sumTotal += t;
-    if(String(x.payment||'')==='cash'){ cashTotal += t; cashCount++; }
-    if(String(x.payment||'')==='transfer'){ transferTotal += t; transferCount++; }
-  });
-
-  k.innerHTML = `
-    <span class="pill">Zobrazeno: <strong>${count}</strong></span>
-    <span class="pill">Míst celkem: <strong>${sumQty}</strong></span>
-    <span class="pill">Tržba: <strong>${fmtKc(sumTotal)}</strong></span>
-    <span class="pill">cash: <strong>${cashCount}</strong> / <strong>${fmtKc(cashTotal)}</strong></span>
-    <span class="pill">transfer: <strong>${transferCount}</strong> / <strong>${fmtKc(transferTotal)}</strong></span>
-  `;
-}
-function renderPageInfo_(){
-  const info = el('b_pageinfo');
-  const ps = Number(el('b_ps').value||50);
-  const shown = B_LAST_ITEMS.length;
-  info.textContent = `Strana: ${B_PAGE} • PageSize: ${ps} • Celkem (dle API): ${B_TOTAL} • Zobrazeno (po lokálním filtru): ${shown}`;
-}
-
 el('bk_save').onclick = async ()=>{
   const msg=el('bk_msg');
   msg.className='error';
@@ -795,26 +753,8 @@ el('bk_save').onclick = async ()=>{
 
   msg.className='ok';
   msg.textContent='Uloženo.';
-  B_PAGE = 1; B_APPEND = false;
   await loadBookings();
 };
-
-// Enter v edit panelu uloží
-['bk_name','bk_qty','bk_phone','bk_email'].forEach(id=>{
-  const x=el(id);
-  if(x) x.addEventListener('keydown', (e)=>{
-    if(e.key==='Enter'){ e.preventDefault(); el('bk_save').click(); }
-  });
-});
-
-// ESC zruší výběr rezervace
-document.addEventListener('keydown', (e)=>{
-  if(e.key==='Escape'){
-    BOOKING_KEY=null;
-    document.querySelectorAll(`#bookingsTable tbody tr`).forEach(x=>x.classList.remove('sel'));
-    el('bk_msg').textContent='';
-  }
-});
 
 /* ===== ARCHIVE ===== */
 async function loadArchive(){
