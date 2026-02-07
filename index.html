@@ -42,6 +42,21 @@
     .sel{background:#fef3c7 !important}
     .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef2ff}
     .log{margin:10px 0;padding:10px;border-radius:8px;background:#fff;border:1px dashed #e5e7eb;font:12px/1.5 ui-monospace,Menlo,monospace;max-height:160px;overflow:auto;white-space:pre-wrap}
+
+    /* --- BOOKINGS UX --- */
+    .table-wrap{overflow:auto; border-radius:12px; border:1px solid #e5e7eb; background:#fff}
+    table{background:#fff}
+    thead th{position:sticky; top:0; z-index:2}
+    .kpi{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+    .kpi .pill{background:#f3f4f6}
+    .kpi strong{font-variant-numeric:tabular-nums}
+    a.mini{color:#111; text-decoration:none; border-bottom:1px dashed #cbd5e1}
+    a.mini:hover{border-bottom-color:#111}
+    .smallbtn{padding:8px 12px; border-radius:10px; background:#111; color:#fff; font-weight:700; border:0; cursor:pointer; margin-top:0}
+    .smallbtn.ghost{background:#e5e7eb; color:#111}
+    .smallbtn[disabled]{opacity:.6; cursor:not-allowed}
+    .row-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    .note{font-size:12px;color:#6b7280}
   </style>
 </head>
 <body>
@@ -158,16 +173,47 @@
     <div id="tab-bookings" style="display:none">
       <div class="card">
         <h2>Rezervace</h2>
+
         <div class="toolbar">
           <select id="b_ev" style="min-width:320px"><option value="">(všechny události)</option></select>
+
           <input id="b_from" type="date" />
           <input id="b_to" type="date" />
+
+          <select id="b_pay" style="min-width:160px">
+            <option value="">(platba: vše)</option>
+            <option value="cash">cash</option>
+            <option value="transfer">transfer</option>
+          </select>
+
           <input id="b_q" placeholder="Hledat (jméno, e-mail, tel.)" style="flex:1" />
-          <button id="b_export">Export aktuálního výběru</button>
+
+          <select id="b_ps" style="min-width:120px">
+            <option value="50">50 / str</option>
+            <option value="100">100 / str</option>
+            <option value="200">200 / str</option>
+          </select>
+
+          <div class="row-actions">
+            <button class="smallbtn ghost" id="b_today">Dnes</button>
+            <button class="smallbtn ghost" id="b_week">Týden</button>
+            <button class="smallbtn ghost" id="b_month">Měsíc</button>
+          </div>
+
+          <button class="smallbtn" id="b_reload">Načíst</button>
+          <button class="smallbtn ghost" id="b_more">Načíst další</button>
+
+          <button class="smallbtn" id="b_export">Export události</button>
         </div>
-        <table id="bookingsTable"><thead><tr>
-          <th>TS</th><th>Event</th><th>Jméno</th><th>Email</th><th>Tel</th><th>Míst</th><th>Platba</th><th>Celkem</th>
-        </tr></thead><tbody></tbody></table>
+
+        <div class="kpi" id="b_kpi"></div>
+        <div class="note" id="b_pageinfo" style="margin-top:6px"></div>
+
+        <div class="table-wrap" style="margin-top:10px">
+          <table id="bookingsTable"><thead><tr>
+            <th>TS</th><th>Event</th><th>Jméno</th><th>Email</th><th>Tel</th><th>Míst</th><th>Platba</th><th>Celkem</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
       </div>
 
       <div class="card">
@@ -410,6 +456,14 @@ el('ev_save').onclick = async ()=>{
   }
 };
 
+el('ev_reset').onclick = ()=>{
+  SELECTED_EVENT_ID='';
+  document.querySelectorAll(`#eventsTable tbody tr`).forEach(x=>x.classList.remove('sel'));
+  ['ev_id','ev_name','ev_start','ev_duration','ev_capacity','ev_price','ev_sibling'].forEach(id=>el(id).value='');
+  el('ev_duration').value=90; el('ev_capacity').value=12; el('ev_price').value=200; el('ev_sibling').value=20;
+  el('ev_msg').textContent='';
+};
+
 /* ===== COUPONS ===== */
 el('cp_delete').onclick = async ()=>{
   if(!SELECTED_COUPON_CODE){ alert('Vyber kupon.'); return; }
@@ -503,16 +557,81 @@ el('cp_save').onclick = async ()=>{
   }
 };
 
+el('cp_reset').onclick = ()=>{
+  SELECTED_COUPON_CODE='';
+  document.querySelectorAll(`#couponsTable tbody tr`).forEach(x=>x.classList.remove('sel'));
+  ['cp_code','cp_value','cp_maxuses','cp_minqty','cp_events','cp_cap','cp_from','cp_to','cp_note'].forEach(id=>el(id).value='');
+  el('cp_type').value='amount';
+  el('cp_stack').value='true';
+  el('cp_active').value='1';
+  el('cp_msg').textContent='';
+};
+
 /* ===== BOOKINGS ===== */
 el('b_export').onclick = ()=>{
   const v=el('b_ev').value;
-  if(!v){ alert('Vyber událost v rozbalovačce.'); return; }
+  if(!v){ alert('Pro export vyber konkrétní událost v rozbalovačce.'); return; }
   window.location.href = API_URL+'?action=admin_bookings_export&eventId='+encodeURIComponent(v)+'&'+authQuery();
 };
-['b_ev','b_from','b_to','b_q'].forEach(id=>{
+
+// --- Bookings state ---
+let B_PAGE = 1;
+let B_TOTAL = 0;
+let B_LAST_ITEMS = [];
+let B_APPEND = false;
+
+function debounce(fn, ms=300){
+  let t=null;
+  return (...args)=>{
+    clearTimeout(t);
+    t=setTimeout(()=>fn(...args), ms);
+  };
+}
+function fmtKc(n){
+  const x = Number(n||0);
+  return x.toLocaleString('cs-CZ') + ' Kč';
+}
+function setDateRange(fromDate, toDate){
+  el('b_from').value = fromDate;
+  el('b_to').value = toDate;
+}
+function isoDate(d){
+  const pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+const loadBookingsDebounced = debounce(()=>{ B_PAGE=1; B_APPEND=false; loadBookings(); }, 350);
+
+['b_ev','b_from','b_to','b_pay','b_ps'].forEach(id=>{
   const x=el(id);
-  if(x) x.addEventListener('input', ()=>loadBookings());
+  if(x) x.addEventListener('input', ()=>{ B_PAGE=1; B_APPEND=false; loadBookings(); });
 });
+el('b_q').addEventListener('input', loadBookingsDebounced);
+
+el('b_reload').onclick = ()=>{ B_PAGE=1; B_APPEND=false; loadBookings(); };
+el('b_more').onclick = ()=>{ B_PAGE = Math.max(1, B_PAGE + 1); B_APPEND=true; loadBookings(); };
+
+el('b_today').onclick = ()=>{
+  const d = new Date();
+  const s = isoDate(d);
+  setDateRange(s,s);
+  B_PAGE=1; B_APPEND=false; loadBookings();
+};
+el('b_week').onclick = ()=>{
+  const now = new Date();
+  const day = (now.getDay()+6)%7; // Po=0
+  const mon = new Date(now); mon.setDate(now.getDate()-day);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  setDateRange(isoDate(mon), isoDate(sun));
+  B_PAGE=1; B_APPEND=false; loadBookings();
+};
+el('b_month').onclick = ()=>{
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last  = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  setDateRange(isoDate(first), isoDate(last));
+  B_PAGE=1; B_APPEND=false; loadBookings();
+};
 
 async function loadEventDropdown(){
   const j = await apiFetch(API_URL+'?action=admin_events_dropdown', { method:'GET' });
@@ -527,9 +646,12 @@ async function loadEventDropdown(){
     });
   }
 }
+
 async function loadBookings(){
   const tb=el('bookingsTable').querySelector('tbody');
-  tb.innerHTML='<tr><td colspan="8">Načítám…</td></tr>';
+  if(!B_APPEND) tb.innerHTML='<tr><td colspan="8">Načítám…</td></tr>';
+
+  const pageSize = String(el('b_ps').value||'50');
 
   const p=new URLSearchParams({
     action:'admin_bookings_list',
@@ -537,8 +659,8 @@ async function loadBookings(){
     from: el('b_from').value||'',
     to: el('b_to').value||'',
     q: el('b_q').value||'',
-    page:'1',
-    pageSize:'200'
+    page: String(B_PAGE),
+    pageSize
   });
 
   const j = await apiFetch(API_URL+'?'+p.toString()+'&'+authQuery(), { method:'GET' });
@@ -547,28 +669,56 @@ async function loadBookings(){
     return;
   }
 
-  tb.innerHTML='';
-  if(!(j.items||[]).length){
+  // lokální filtr platby (API ho neumí)
+  let items = (j.items||[]);
+  const pay = el('b_pay').value;
+  if(pay) items = items.filter(x => String(x.payment||'') === pay);
+
+  B_TOTAL = Number(j.total||items.length||0);
+
+  if(!B_APPEND){
+    B_LAST_ITEMS = items;
+    tb.innerHTML='';
+  } else {
+    B_LAST_ITEMS = B_LAST_ITEMS.concat(items);
+  }
+
+  if(!B_LAST_ITEMS.length){
     tb.innerHTML='<tr><td colspan="8">Žádné rezervace.</td></tr>';
+    renderBookingsKpi_([]);
+    renderPageInfo_();
     return;
   }
 
-  (j.items||[]).forEach(bk=>{
+  const listToRender = B_APPEND ? items : B_LAST_ITEMS;
+  listToRender.forEach(bk=>{
     const tr=document.createElement('tr');
 
-    // ✅ očekáváme ISO string (po doporučené úpravě Apps Scriptu); když ne, zkusíme normalizovat
-    let tsIso = '';
-    try{
-      const d = new Date(bk.ts);
-      tsIso = !isNaN(d.getTime()) ? d.toISOString() : String(bk.ts||'');
-    }catch{ tsIso = String(bk.ts||''); }
+    const tsRaw = String(bk.ts ?? '');      // ✅ KLÍČ: posíláme zpět přesně, co přišlo z API
+    const tsDate = new Date(bk.ts);
 
-    tr.innerHTML=`<td>${new Date(bk.ts).toLocaleString('cs-CZ')}</td><td>${bk.eventId}</td><td>${bk.name||''}</td>
-      <td>${bk.email||''}</td><td>${bk.phone||''}</td><td>${bk.qty}</td><td>${bk.payment||''}</td><td>${bk.total||0}</td>`;
+    const tsHuman = isNaN(tsDate.getTime())
+      ? tsRaw
+      : tsDate.toLocaleString('cs-CZ');
+
+    const email = String(bk.email||'');
+    const phone = String(bk.phone||'');
+
+    tr.innerHTML = `
+      <td>${tsHuman}</td>
+      <td>${bk.eventId||''}</td>
+      <td>${bk.name||''}</td>
+      <td>${email ? `<a class="mini" href="mailto:${email}">${email}</a>` : ''}</td>
+      <td>${phone ? `<a class="mini" href="tel:${phone}">${phone}</a>` : ''}</td>
+      <td>${bk.qty ?? ''}</td>
+      <td>${bk.payment||''}</td>
+      <td>${bk.total||0}</td>
+    `;
 
     const onPick = ()=>{
       setSel(tr,'#bookingsTable');
-      BOOKING_KEY = { ts: tsIso, eventId: bk.eventId };
+
+      BOOKING_KEY = { ts: tsRaw, eventId: String(bk.eventId||'') };
 
       el('bk_name').value=bk.name||'';
       el('bk_qty').value=bk.qty||0;
@@ -582,7 +732,40 @@ async function loadBookings(){
 
     tb.appendChild(tr);
   });
+
+  renderBookingsKpi_(B_LAST_ITEMS);
+  renderPageInfo_();
 }
+
+function renderBookingsKpi_(items){
+  const k = el('b_kpi');
+  const count = items.length;
+
+  let sumQty=0, sumTotal=0, cashTotal=0, transferTotal=0, cashCount=0, transferCount=0;
+  items.forEach(x=>{
+    const q = Number(x.qty||0);
+    const t = Number(x.total||0);
+    sumQty += q;
+    sumTotal += t;
+    if(String(x.payment||'')==='cash'){ cashTotal += t; cashCount++; }
+    if(String(x.payment||'')==='transfer'){ transferTotal += t; transferCount++; }
+  });
+
+  k.innerHTML = `
+    <span class="pill">Zobrazeno: <strong>${count}</strong></span>
+    <span class="pill">Míst celkem: <strong>${sumQty}</strong></span>
+    <span class="pill">Tržba: <strong>${fmtKc(sumTotal)}</strong></span>
+    <span class="pill">cash: <strong>${cashCount}</strong> / <strong>${fmtKc(cashTotal)}</strong></span>
+    <span class="pill">transfer: <strong>${transferCount}</strong> / <strong>${fmtKc(transferTotal)}</strong></span>
+  `;
+}
+function renderPageInfo_(){
+  const info = el('b_pageinfo');
+  const ps = Number(el('b_ps').value||50);
+  const shown = B_LAST_ITEMS.length;
+  info.textContent = `Strana: ${B_PAGE} • PageSize: ${ps} • Celkem (dle API): ${B_TOTAL} • Zobrazeno (po lokálním filtru): ${shown}`;
+}
+
 el('bk_save').onclick = async ()=>{
   const msg=el('bk_msg');
   msg.className='error';
@@ -612,8 +795,26 @@ el('bk_save').onclick = async ()=>{
 
   msg.className='ok';
   msg.textContent='Uloženo.';
+  B_PAGE = 1; B_APPEND = false;
   await loadBookings();
 };
+
+// Enter v edit panelu uloží
+['bk_name','bk_qty','bk_phone','bk_email'].forEach(id=>{
+  const x=el(id);
+  if(x) x.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ e.preventDefault(); el('bk_save').click(); }
+  });
+});
+
+// ESC zruší výběr rezervace
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape'){
+    BOOKING_KEY=null;
+    document.querySelectorAll(`#bookingsTable tbody tr`).forEach(x=>x.classList.remove('sel'));
+    el('bk_msg').textContent='';
+  }
+});
 
 /* ===== ARCHIVE ===== */
 async function loadArchive(){
