@@ -20,7 +20,7 @@
     body{font-family:system-ui,-apple-system,Inter,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);margin:0}
     .wrap{max-width:1180px;margin:40px auto;padding:20px}
     .card{background:var(--card);padding:18px 20px;margin-bottom:16px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
-    .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}
+    .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;align-items:start}
     @media (max-width:980px){.grid{grid-template-columns:1fr}}
     h1{font-size:22px;margin:0 0 16px} h2{font-size:18px;margin:0 0 10px}
     label{display:block;margin-top:10px;font-weight:600}
@@ -34,7 +34,7 @@
     nav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
     nav button{background:#e5e7eb;color:#111} nav button.active{background:#111;color:#fff}
     table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
-    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left;vertical-align:top}
+    th,td{border:1px solid #e5e7eb;padding:8px;text-align:left;vertical-align:top}
     th{background:#f3f4f6}
     tr:hover{background:#fafafa}
     .right{display:flex;justify-content:flex-end;gap:8px}
@@ -43,32 +43,48 @@
     .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef2ff}
     .log{margin:10px 0;padding:10px;border-radius:8px;background:#fff;border:1px dashed #e5e7eb;font:12px/1.5 ui-monospace,Menlo,monospace;max-height:160px;overflow:auto;white-space:pre-wrap}
 
-    /* ===== KAPACITNÍ RADAR UI ===== */
-    .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
-    .b-sold{background:#111;color:#fff}
-    .b-high{background:#fee2e2;color:#991b1b}
-    .b-ok{background:#e0e7ff;color:#1e3a8a}
-    .b-low{background:#e5e7eb;color:#374151}
-    .b-urg{background:#fef3c7;color:#92400e}
-    .mono{font:12px/1.4 ui-monospace,Menlo,monospace;color:#374151}
-    .radarCell{min-width:260px}
-    .mini{display:block;margin-top:2px;color:#6b7280;font-size:12px}
+    /* ==== sticky edit panel (ať nikdy “neodjede do řiti”) ==== */
+    .sticky{
+      position:sticky;
+      top:16px;
+    }
+    @media (max-width:980px){
+      .sticky{ position:static; top:auto; }
+    }
 
-    /* ===== AKČNÍ PANEL ===== */
-    .panel{display:grid;grid-template-columns:1fr;gap:10px;margin:10px 0 0}
-    .panelRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#f3f4f6;font-weight:700;font-size:12px}
-    .actionList{margin-top:10px;display:grid;gap:10px}
-    .actionItem{border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff}
-    .actionTop{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-    .actionTitle{font-weight:900}
+    /* ==== semafor / doporučení ==== */
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}
+    .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
+    .b-crit{background:#fee2e2;color:#991b1b}
+    .b-crit .dot{background:#dc2626}
+    .b-watch{background:#fef3c7;color:#92400e}
+    .b-watch .dot{background:#f59e0b}
+    .b-ok{background:#e5e7eb;color:#374151}
+    .b-ok .dot{background:#6b7280}
+    .b-sold{background:#111;color:#fff}
+    .b-sold .dot{background:#fff}
+    .mono{font:12px/1.4 ui-monospace,Menlo,monospace;color:#374151}
+
+    /* ==== “Co řešit” panel: max výška + scroll ==== */
+    .subnav{display:flex;gap:10px;align-items:center;margin:6px 0 12px}
+    .subnav button{margin-top:0;background:#e5e7eb;color:#111;padding:8px 12px;border-radius:999px;font-weight:800}
+    .subnav button.active{background:#111;color:#fff}
+    .actionBox{
+      border:1px solid #e5e7eb;border-radius:12px;padding:12px;background:#fff;
+      max-height:260px; overflow:auto;
+    }
+    .actionRow{
+      display:flex;gap:12px;align-items:center;justify-content:space-between;
+      border:1px solid #e5e7eb;border-radius:12px;padding:10px 10px;margin-bottom:10px;
+      background:#fafafa;
+    }
+    .actionLeft{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .actionTitle{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .actionMeta{color:#6b7280;font-size:12px}
-    .actionBtns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .btnSm{margin-top:0;padding:8px 10px;border-radius:10px;font-size:12px}
-    .btnGhost{background:#e5e7eb;color:#111}
-    .btnOk{background:#111;color:#fff}
-    .hidden{display:none!important}
-    .smallSelect{padding:8px 10px;border-radius:10px;font-size:12px;border:1px solid #e5e7eb;background:#fff}
+    .actionBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .btnSmall{margin-top:0;padding:8px 10px;border-radius:10px;font-size:13px;font-weight:900;background:#e5e7eb;color:#111}
+    .btnSmall.primary{background:#111;color:#fff}
+    .summaryLine{display:flex;justify-content:flex-end;gap:10px;align-items:center;color:#6b7280;font-size:12px;margin-top:6px}
   </style>
 </head>
 <body>
@@ -105,26 +121,26 @@
         <div class="card">
           <h2>Seznam termínů</h2>
 
-          <!-- ✅ Akční panel: co řešit -->
-          <div class="panel">
-            <div class="panelRow">
-              <span class="chip">🎯 Co řešit</span>
-
-              <label class="muted" style="margin:0">Pohled</label>
-              <select id="radar_view" class="smallSelect">
-                <option value="acute">Akutní (10 dní)</option>
-                <option value="month" selected>Měsíc (30 dní)</option>
+          <div class="subnav">
+            <button id="view_actions" class="active">⏱️ Co řešit</button>
+            <button id="view_table">📋 Pohled</button>
+            <div class="right" style="margin-left:auto">
+              <select id="windowSel" style="width:auto;min-width:170px;margin-top:0">
+                <option value="30">Měsíc (30 dní)</option>
+                <option value="14">14 dní</option>
+                <option value="7">7 dní</option>
               </select>
-
-              <span class="muted" id="radar_summary" style="margin-left:auto"></span>
-            </div>
-
-            <div id="radar_actions" class="actionList">
-              <div class="muted">Načítám radar…</div>
             </div>
           </div>
 
-          <div class="toolbar">
+          <div id="actionsWrap">
+            <div class="actionBox" id="actionsBox">
+              <div class="muted">Načítám úkoly…</div>
+            </div>
+            <div class="summaryLine" id="actionsSummary"></div>
+          </div>
+
+          <div class="toolbar" style="margin-top:12px">
             <input id="f_from" type="date" />
             <input id="f_to" type="date" />
             <input id="f_q" placeholder="Hledat v ID / názvu" style="flex:1" />
@@ -132,12 +148,15 @@
             <button id="ev_archive">Archivovat</button>
           </div>
           <div class="muted">Kliknutím vybereš termín pro úpravu / export / archivaci.</div>
-          <table id="eventsTable"><thead><tr>
-            <th>ID</th><th>Název</th><th>Start</th><th>Kap.</th><th>Obs.</th><th>Semafor</th><th>Doporučení</th><th>Cena</th><th>Sleva souroz.</th>
-          </tr></thead><tbody></tbody></table>
+
+          <div id="tableWrap" style="display:block">
+            <table id="eventsTable"><thead><tr>
+              <th>ID</th><th>Název</th><th>Start</th><th>Kap.</th><th>Obs.</th><th>Semafor</th><th>Doporučení</th><th>Cena</th><th>Sleva souroz.</th>
+            </tr></thead><tbody></tbody></table>
+          </div>
         </div>
 
-        <div class="card">
+        <div class="card sticky">
           <h2>Nový / úprava termínu</h2>
           <div class="muted">Zapisuje se do <span class="pill">Events</span>.</div>
           <label>ID</label><input id="ev_id" />
@@ -253,6 +272,17 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbzAJh9wVawvTfLUfsi7qqtkxyaT5Hpm69gyAlwNROW8N5S-MEIrOSW541caGaRQ5ysl_g/exec';
 if(!API_URL || !API_URL.includes('/exec')){ alert('Chybí platná API_URL!'); }
 
+/* ===== SEMAFOR LOGIKA (srozumitelné prahy) ===== */
+const CRIT_DAYS = 7;         // do 7 dnů = krizové (pokud chybí místa)
+const WATCH_DAYS = 14;       // do 14 dnů = pozor
+const MIN_LEFT_ALERT = 3;    // alert má smysl, když chybí alespoň 3 místa
+
+function badgeHtml(kind, text, title=''){
+  const t = title ? ` title="${escapeHtml_(title)}"` : '';
+  const cls = kind==='crit' ? 'b-crit' : kind==='watch' ? 'b-watch' : kind==='sold' ? 'b-sold' : 'b-ok';
+  return `<span class="badge ${cls}"${t}><span class="dot"></span>${text}</span>`;
+}
+
 /* ===== HELPERY ===== */
 const el = id => document.getElementById(id);
 const errEmail = el('msgEmail'), errOtp = el('msgOtp'), dbg = el('debug');
@@ -269,6 +299,22 @@ function logDbg(obj){
   dbg.style.display='block';
   try{ dbg.textContent = typeof obj==='string' ? obj : JSON.stringify(obj,null,2); }
   catch{ dbg.textContent = String(obj); }
+}
+function escapeHtml_(s){
+  return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function copyToClipboard_(text){
+  const t = String(text||'');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).catch(()=>{});
+    return;
+  }
+  const ta = document.createElement('textarea');
+  ta.value = t;
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand('copy'); }catch{}
+  ta.remove();
 }
 
 /* ===== FETCH WRAPPER (iOS hardening) ===== */
@@ -297,260 +343,6 @@ async function apiFetch(url, opts={}){
   } finally {
     clearTimeout(t);
   }
-}
-
-/* ===== KAPACITNÍ RADAR (akční) =====
-   Cíl: manželka nechce "30 dní: 0 míst".
-   Chce: "Chybí X míst, do termínu Y dní, co udělat".
-*/
-const RADAR_WINDOW_DAYS = 30;  // počítáme tempo za posledních 30 dní
-const VIEW_ACUTE_DAYS = 10;    // akutní pohled = termíny do 10 dní
-const VIEW_MONTH_DAYS = 30;    // měsíční pohled = termíny do 30 dní
-
-// prahy pro SEMAFOR (bez historie a bez Apps Script změn)
-const THRESH = {
-  CRITICAL_DAYS: 7,    // do 7 dní
-  SOON_DAYS: 14,       // do 14 dní
-  LOW_PCT_7: 0.40,     // <40% obsazení do 7 dní = krizové
-  LOW_PCT_14: 0.25,    // <25% obsazení do 14 dní = tlačit
-  ZERO_AFTER_HOURS: 48 // 0 rezervací po 48h od vytvoření/začátku okna => hlídat (fallback)
-};
-
-function daysDiff_(a, b){
-  const ms = 24*60*60*1000;
-  return Math.round((b - a)/ms);
-}
-function clamp_(n, a, b){ return Math.max(a, Math.min(b, n)); }
-function escapeHtml_(s){
-  return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-function badge_(cls, text, title=''){
-  const t = title ? ` title="${escapeHtml_(title)}"` : '';
-  return `<span class="badge ${cls}"${t}>${text}</span>`;
-}
-
-function formatCZDate_(isoOrStr){
-  try{
-    const d = new Date(isoOrStr);
-    if(isNaN(d.getTime())) return String(isoOrStr||'');
-    return d.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-  }catch{ return String(isoOrStr||''); }
-}
-function pad2_(n){ return String(n).padStart(2,'0'); }
-function formatShort_(isoOrStr){
-  try{
-    const d = new Date(isoOrStr);
-    if(isNaN(d.getTime())) return String(isoOrStr||'');
-    return `${pad2_(d.getDate())}.${pad2_(d.getMonth()+1)}. ${pad2_(d.getHours())}:${pad2_(d.getMinutes())}`;
-  }catch{ return String(isoOrStr||''); }
-}
-
-function buildPromoText_(ev){
-  const d = new Date(ev.start);
-  const dateLine = !isNaN(d.getTime())
-    ? `${pad2_(d.getDate())}.${pad2_(d.getMonth()+1)}.${d.getFullYear()} v ${pad2_(d.getHours())}:${pad2_(d.getMinutes())}`
-    : String(ev.start||'');
-  const left = Math.max(0, Number(ev.capacity||0) - Number(ev.taken||0));
-  const name = String(ev.name||'');
-  // link neznáme, necháme generické (manželka vloží, nebo doplníš později)
-  return `📌 ${name}\n🗓️ ${dateLine}\n✅ Volná místa: ${left}\n\nRezervace: (vložit odkaz)\n`;
-}
-
-async function fetchBookingsRange_(fromISO, toISO){
-  let page = 1;
-  const pageSize = 200;
-  let all = [];
-  while(true){
-    const p = new URLSearchParams({
-      action:'admin_bookings_list',
-      from: fromISO,
-      to: toISO,
-      page: String(page),
-      pageSize: String(pageSize)
-    });
-    const j = await apiFetch(API_URL+'?'+p.toString()+'&'+authQuery(), { method:'GET' });
-    if(!j.ok) throw new Error(j.error||'Chyba načtení rezervací pro radar');
-    all = all.concat(j.items||[]);
-    if((j.items||[]).length < pageSize) break;
-    page++;
-    if(page > 15) break;
-  }
-  return all;
-}
-
-function computeRadar_(events, bookings){
-  // bookings: součet qty za okno
-  const byEv = new Map();
-  bookings.forEach(b=>{
-    const id = String(b.eventId||'');
-    const qty = Number(b.qty||1);
-    byEv.set(id, (byEv.get(id)||0) + qty);
-  });
-
-  const now = new Date();
-  const map = {};
-  events.forEach(ev=>{
-    const cap = Number(ev.capacity||0);
-    const taken = Number(ev.taken||0);
-    const left = Math.max(0, cap - taken);
-
-    const start = new Date(ev.start);
-    const daysToStart = clamp_(daysDiff_(now, start), -9999, 9999);
-
-    const windowSum = Number(byEv.get(String(ev.id))||0);
-    const velocity = windowSum / RADAR_WINDOW_DAYS; // místa/den (posledních 30 dní)
-    const etaDays = (velocity > 0) ? (left / velocity) : null;
-
-    const pct = cap > 0 ? (taken / cap) : 0;
-
-    // SEMAFOR (primárně podle času a obsazení – srozumitelnější)
-    let status = 'OK';     // OK / WATCH / PUSH / CRITICAL / SOLD
-    let cls = 'b-ok';
-    let headline = '✅ OK';
-    let advice = 'Zatím v normě.';
-    let action = 'Žádná akce.';
-
-    if(left <= 0){
-      status='SOLD'; cls='b-sold'; headline='VYPRODÁNO'; advice='Hotovo.'; action='—';
-    } else if(daysToStart <= THRESH.CRITICAL_DAYS && pct < THRESH.LOW_PCT_7){
-      status='CRITICAL'; cls='b-high'; headline='🔴 KRIZOVÉ';
-      advice = `Do termínu ${daysToStart} dní, chybí ${left} míst.`;
-      action = 'Dát dnes post + story (připomenout).';
-    } else if(daysToStart <= THRESH.SOON_DAYS && pct < THRESH.LOW_PCT_14){
-      status='PUSH'; cls='b-urg'; headline='🟠 TLAČIT';
-      advice = `Do termínu ${daysToStart} dní, chybí ${left} míst.`;
-      action = 'Naplánovat připomenutí (story / FB).';
-    } else if(pct < 0.15 && daysToStart > 0){
-      status='WATCH'; cls='b-low'; headline='🟡 HLÍDAT';
-      advice = `Zatím slabší start, chybí ${left} míst.`;
-      action = 'Jemně připomenout (1× příspěvek).';
-    } else {
-      // OK (případně přidáme "rychlé plnění" podle ETA)
-      if(etaDays != null && daysToStart > 0 && etaDays <= daysToStart * 1.1){
-        cls='b-high'; headline='🔥 PLNÍ SE'; advice=`Tempo dobré, chybí ${left} míst.`; action='Spíš jen udržet.';
-      }
-    }
-
-    const detail = [
-      `Obsazení: ${taken}/${cap} (${Math.round(pct*100)}%)`,
-      `Volno: ${left}`,
-      `Do startu: ${daysToStart} dní`,
-      `Tempo (30 dní): ${windowSum} míst (${velocity.toFixed(2)}/den)`,
-      etaDays!=null ? `ETA vyprodání: ~${Math.ceil(etaDays)} dní` : `ETA vyprodání: neznámé`
-    ].join('\n');
-
-    map[String(ev.id)] = {
-      status,
-      cls,
-      headline,
-      advice,
-      action,
-      left,
-      cap,
-      taken,
-      pct,
-      daysToStart,
-      velocityPerDay: velocity,
-      windowSum,
-      etaDays,
-      semaforHtml: badge_(cls, headline.replace('✅ ','').replace('🔥 ',''), detail),
-      radarHtml:
-        badge_(cls, headline, detail) +
-        `<span class="mini">${advice}<br><strong>Doporučení:</strong> ${action}</span>`
-    };
-  });
-
-  return map;
-}
-
-function filterUpcoming_(events, maxDays){
-  const now = new Date();
-  return (events||[]).filter(ev=>{
-    const d = new Date(ev.start);
-    if(isNaN(d.getTime())) return false;
-    const dt = daysDiff_(now, d);
-    return dt >= 0 && dt <= maxDays;
-  }).sort((a,b)=> new Date(a.start) - new Date(b.start));
-}
-
-function buildActionItems_(events, radarMap, view){
-  const maxDays = (view === 'acute') ? VIEW_ACUTE_DAYS : VIEW_MONTH_DAYS;
-  const upcoming = filterUpcoming_(events, maxDays);
-
-  // prioritizace: CRITICAL -> PUSH -> WATCH
-  const priority = { CRITICAL: 0, PUSH: 1, WATCH: 2, OK: 9, SOLD: 10 };
-
-  const items = upcoming
-    .map(ev => ({ ev, r: radarMap[String(ev.id)] }))
-    .filter(x => x.r && ['CRITICAL','PUSH','WATCH'].includes(x.r.status))
-    .sort((a,b)=>{
-      const pa = priority[a.r.status] ?? 9;
-      const pb = priority[b.r.status] ?? 9;
-      if(pa !== pb) return pa - pb;
-      return a.r.daysToStart - b.r.daysToStart;
-    })
-    .slice(0, 6); // max 6 úkolů
-
-  return { items, maxDays, totalUpcoming: upcoming.length };
-}
-
-function renderActionPanel_(events, radarMap){
-  const view = (el('radar_view')?.value) || 'month';
-  const box = el('radar_actions');
-  const sum = el('radar_summary');
-
-  if(!box || !sum){ return; }
-
-  const { items, maxDays, totalUpcoming } = buildActionItems_(events, radarMap, view);
-
-  // summary
-  const c = items.filter(x=>x.r.status==='CRITICAL').length;
-  const p = items.filter(x=>x.r.status==='PUSH').length;
-  const w = items.filter(x=>x.r.status==='WATCH').length;
-  sum.textContent = `Výhled ${maxDays} dní: ${totalUpcoming} termínů • úkoly: ${c}× kritické, ${p}× tlačit, ${w}× hlídat`;
-
-  if(!items.length){
-    box.innerHTML = `<div class="muted">✅ Nic kritického. Vypadá to v pohodě.</div>`;
-    return;
-  }
-
-  box.innerHTML = '';
-  items.forEach(({ev, r})=>{
-    const left = Math.max(0, Number(ev.capacity||0) - Number(ev.taken||0));
-    const promo = buildPromoText_(ev);
-
-    const item = document.createElement('div');
-    item.className = 'actionItem';
-
-    item.innerHTML = `
-      <div class="actionTop">
-        <div>
-          <div class="actionTitle">${r.radarHtml}</div>
-          <div class="actionMeta">${escapeHtml_(ev.name||'')} • ${escapeHtml_(formatShort_(ev.start))} • chybí <strong>${left}</strong> míst</div>
-        </div>
-        <div class="actionBtns">
-          <button class="btnSm btnGhost" data-act="copy" data-id="${escapeHtml_(ev.id)}">Zkopírovat text (IG/FB)</button>
-          <button class="btnSm btnGhost" data-act="pick" data-id="${escapeHtml_(ev.id)}">Vybrat termín</button>
-        </div>
-      </div>
-    `;
-    item.querySelector('[data-act="copy"]').onclick = async ()=>{
-      try{
-        await navigator.clipboard.writeText(promo);
-        alert('Zkopírováno do schránky ✅');
-      }catch{
-        // fallback: prompt
-        prompt('Zkopíruj text:', promo);
-      }
-    };
-    item.querySelector('[data-act="pick"]').onclick = ()=>{
-      // najdi řádek v tabulce a vyber
-      const tr = document.querySelector(`#eventsTable tbody tr[data-eid="${CSS.escape(String(ev.id))}"]`);
-      if(tr){ tr.scrollIntoView({behavior:'smooth', block:'center'}); tr.click(); }
-    };
-
-    box.appendChild(item);
-  });
 }
 
 /* ===== OTP ===== */
@@ -600,10 +392,26 @@ document.querySelectorAll('nav button[data-tab]').forEach(b=>{
 });
 el('logoutBtn').onclick = ()=>{ localStorage.removeItem('adm_token'); location.reload(); };
 
+/* ===== VIEW TOGGLE (Co řešit / Pohled) ===== */
+el('view_actions').onclick = ()=>{
+  el('view_actions').classList.add('active');
+  el('view_table').classList.remove('active');
+  el('actionsWrap').style.display='block';
+  el('tableWrap').style.display='block';
+};
+el('view_table').onclick = ()=>{
+  el('view_table').classList.add('active');
+  el('view_actions').classList.remove('active');
+  el('actionsWrap').style.display='none';
+  el('tableWrap').style.display='block';
+};
+
 /* ===== STATE ===== */
 let SELECTED_EVENT_ID='';
 let SELECTED_COUPON_CODE='';
 let BOOKING_KEY=null;
+
+let LAST_EVENTS = [];
 
 /* ===== EVENTS ===== */
 ['f_from','f_to','f_q'].forEach(id=>{
@@ -611,9 +419,9 @@ let BOOKING_KEY=null;
   if(x) x.addEventListener('input', ()=>loadEvents());
 });
 
-if(el('radar_view')){
-  el('radar_view').addEventListener('change', ()=>{ if(window.__LAST_EVENTS && window.__LAST_RADAR){ renderActionPanel_(window.__LAST_EVENTS, window.__LAST_RADAR); } });
-}
+el('windowSel').addEventListener('change', ()=>{
+  buildActionPanel(LAST_EVENTS);
+});
 
 el('ev_export').onclick = ()=>{
   if(!SELECTED_EVENT_ID){ alert('Vyber termín.'); return; }
@@ -633,10 +441,134 @@ el('ev_archive').onclick = async ()=>{
   alert('Termín přesunut do archivu.');
 };
 
+function daysTo_(d){
+  const now = new Date();
+  const ms = 24*60*60*1000;
+  return Math.ceil((d - now)/ms);
+}
+
+function classifyEvent_(ev){
+  const cap = Number(ev.capacity||0);
+  const taken = Number(ev.taken||0);
+  const left = cap - taken;
+  const start = new Date(ev.start);
+  const d = daysTo_(start);
+
+  if(left <= 0){
+    return { kind:'sold', label:'VYPRODÁNO', rec:'—', d, left, cap, start };
+  }
+
+  // okno dle selectu v UI
+  const windowDays = Number(el('windowSel').value||30);
+  if(d > windowDays){
+    return { kind:'ok', label:'OK', rec:'—', d, left, cap, start, hidden:true };
+  }
+
+  // semafor: srozumitelně podle času a kolik míst chybí
+  if(d <= CRIT_DAYS && left >= MIN_LEFT_ALERT){
+    return {
+      kind:'crit',
+      label:'KRIZOVÉ',
+      rec:`Dát dnes post + story (připomenout).`,
+      d, left, cap, start
+    };
+  }
+  if(d <= WATCH_DAYS && left >= MIN_LEFT_ALERT){
+    return {
+      kind:'watch',
+      label:'POZOR',
+      rec:`Podpořit v týdnu (post / stories / připomenutí ve skupinách).`,
+      d, left, cap, start
+    };
+  }
+
+  return { kind:'ok', label:'OK', rec:`Jen hlídat.`, d, left, cap, start };
+}
+
+function formatStartHuman_(ev){
+  try{
+    const d = new Date(ev.start);
+    return d.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }).replace(',', '');
+  }catch{
+    return String(ev.start||'');
+  }
+}
+
+function buildIGText_(ev, cls){
+  const when = formatStartHuman_(ev);
+  const missing = Math.max(0, Number(ev.capacity||0) - Number(ev.taken||0));
+  return `${ev.name}\n📅 ${when}\n👉 Volná místa: ${missing}\nRezervace: smyslokoutek.cz`;
+}
+
+function buildActionPanel(events){
+  const box = el('actionsBox');
+  const sum = el('actionsSummary');
+  const windowDays = Number(el('windowSel').value||30);
+
+  const rows = [];
+  let nCrit=0, nWatch=0, nOk=0;
+
+  events.forEach(ev=>{
+    const c = classifyEvent_(ev);
+    if(c.hidden) return;
+
+    if(c.kind==='crit') nCrit++;
+    else if(c.kind==='watch') nWatch++;
+    else if(c.kind==='ok') nOk++;
+
+    if(c.kind==='ok') return; // “Co řešit” ukazuje jen akční věci
+
+    const label = badgeHtml(c.kind, c.label, `Do termínu ${c.d} dní • chybí ${c.left} míst z ${c.cap}`);
+    const line1 = `Do termínu ${c.d} dní, chybí ${c.left} míst.`;
+    const line2 = `Doporučení: ${c.rec}`;
+    const meta = `${ev.name} • ${formatStartHuman_(ev)} • chybí ${c.left} míst`;
+
+    rows.push(`
+      <div class="actionRow">
+        <div class="actionLeft">
+          <div class="actionTitle">${label} <span class="mono">${escapeHtml_(line1)}</span></div>
+          <div class="actionMeta">${escapeHtml_(line2)}</div>
+          <div class="actionMeta">${escapeHtml_(meta)}</div>
+        </div>
+        <div class="actionBtns">
+          <button class="btnSmall" data-copy="${escapeHtml_(buildIGText_(ev, c))}">Zkopírovat text (IG/FB)</button>
+          <button class="btnSmall primary" data-pick="${escapeHtml_(ev.id)}">Vybrat termín</button>
+        </div>
+      </div>
+    `);
+  });
+
+  if(!rows.length){
+    box.innerHTML = `<div class="muted">V rámci ${windowDays} dnů není nic akutního 🎉</div>`;
+  }else{
+    box.innerHTML = rows.join('');
+  }
+
+  sum.textContent = `Výhled ${windowDays} dní: ${events.filter(ev=>!classifyEvent_(ev).hidden).length} termínů • úkoly: ${nCrit}× kritické, ${nWatch}× pozor`;
+
+  // bind tlačítek
+  box.querySelectorAll('button[data-copy]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const txt = btn.getAttribute('data-copy') || '';
+      copyToClipboard_(txt);
+      btn.textContent = 'Zkopírováno ✅';
+      setTimeout(()=>btn.textContent='Zkopírovat text (IG/FB)', 1400);
+    };
+  });
+  box.querySelectorAll('button[data-pick]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = btn.getAttribute('data-pick') || '';
+      const tr = document.querySelector(`#eventsTable tbody tr[data-evid="${CSS.escape(id)}"]`);
+      if(tr) tr.scrollIntoView({ behavior:'smooth', block:'center' });
+      // “klik” na řádek = načti do formuláře
+      if(tr) tr.click();
+    };
+  });
+}
+
 async function loadEvents(){
   const box=el('eventsTable').querySelector('tbody');
   box.innerHTML='<tr><td colspan="9">Načítám…</td></tr>';
-  if(el('radar_actions')) el('radar_actions').innerHTML = `<div class="muted">Načítám radar…</div>`;
 
   try{
     const p=new URLSearchParams({
@@ -647,58 +579,45 @@ async function loadEvents(){
     });
     const j = await apiFetch(API_URL+'?'+p.toString()+'&'+authQuery(), { method:'GET' });
     if(!j.ok) throw new Error(j.error||'Chyba načtení');
-
-    const events = j.items || [];
-    window.__LAST_EVENTS = events;
-
-    renderEvents(events); // rychle bez radaru
-
-    // radar: tempo za posledních 30 dní
-    const now = new Date();
-    const from = new Date(now.getTime() - RADAR_WINDOW_DAYS*24*60*60*1000);
-    const fromISO = from.toISOString().slice(0,10);
-    const toISO = now.toISOString().slice(0,10);
-
-    const bookings = await fetchBookingsRange_(fromISO, toISO);
-    const radarMap = computeRadar_(events, bookings);
-    window.__LAST_RADAR = radarMap;
-
-    renderEvents(events, radarMap);       // tabulka se semaforem + doporučením
-    renderActionPanel_(events, radarMap); // akční panel nahoře
+    LAST_EVENTS = j.items||[];
+    renderEvents(LAST_EVENTS);
+    buildActionPanel(LAST_EVENTS);
   }catch(e){
     box.innerHTML=`<tr><td colspan="9" style="color:#dc2626">${e.message}</td></tr>`;
     logDbg(String(e));
   }
 }
 
-function renderEvents(items, radarMap = null){
+function renderEvents(items){
   const box=el('eventsTable').querySelector('tbody');
   SELECTED_EVENT_ID='';
   if(!items.length){ box.innerHTML='<tr><td colspan="9">Žádné termíny.</td></tr>'; return; }
   box.innerHTML='';
   items.forEach(ev=>{
     const tr=document.createElement('tr');
-    tr.dataset.eid = String(ev.id);
+    tr.setAttribute('data-evid', ev.id);
 
-    const r = radarMap ? radarMap[String(ev.id)] : null;
+    const c = classifyEvent_(ev);
+    const cap = Number(ev.capacity||0);
+    const taken = Number(ev.taken||0);
+    const left = cap - taken;
 
-    const semafor = r ? `${badge_(r.cls, r.headline)}`
-                      : `${badge_('b-low','RADAR…')}`;
-
-    const advice = r
-      ? `<div class="radarCell">${escapeHtml_(r.advice)}<span class="mini"><strong>Doporučení:</strong> ${escapeHtml_(r.action)}</span></div>`
-      : `<span class="muted">Načítám…</span>`;
+    const sem = badgeHtml(c.kind, c.label, `Do termínu ${c.d} dní • chybí ${left} míst z ${cap}`);
+    const rec = c.kind==='sold' ? '—'
+              : c.kind==='crit' ? `Do termínu ${c.d} dní, chybí ${left} míst. ${c.rec}`
+              : c.kind==='watch' ? `Do termínu ${c.d} dní, chybí ${left} míst. ${c.rec}`
+              : `Do termínu ${c.d} dní. ${c.rec}`;
 
     tr.innerHTML=
       `<td>${escapeHtml_(ev.id)}</td>
        <td>${escapeHtml_(ev.name)}</td>
-       <td>${escapeHtml_(formatCZDate_(ev.start))}</td>
-       <td>${escapeHtml_(ev.capacity)}</td>
-       <td>${escapeHtml_(ev.taken)}</td>
-       <td>${semafor}</td>
-       <td>${advice}</td>
-       <td>${escapeHtml_(ev.price)}</td>
-       <td>${escapeHtml_(ev.sibling_discount)}</td>`;
+       <td>${escapeHtml_(formatStartHuman_(ev))}</td>
+       <td>${cap}</td>
+       <td>${taken}</td>
+       <td>${sem}</td>
+       <td class="muted">${escapeHtml_(rec)}</td>
+       <td>${Number(ev.price||0)}</td>
+       <td>${Number(ev.sibling_discount||0)}</td>`;
 
     const onPick = ()=>{
       setSel(tr,'#eventsTable');
@@ -707,7 +626,6 @@ function renderEvents(items, radarMap = null){
     };
     tr.addEventListener('click', onPick, {passive:true});
     tr.addEventListener('pointerup', onPick, {passive:true}); // iOS fallback
-
     box.appendChild(tr);
   });
 }
@@ -725,6 +643,7 @@ function fillEventForm(ev){
   el('ev_price').value=ev.price||0;
   el('ev_sibling').value=ev.sibling_discount||0;
 }
+
 el('ev_save').onclick = async ()=>{
   const msg=el('ev_msg');
   msg.className='error';
@@ -754,6 +673,19 @@ el('ev_save').onclick = async ()=>{
     msg.textContent=String(e);
     logDbg(String(e));
   }
+};
+
+el('ev_reset').onclick = ()=>{
+  SELECTED_EVENT_ID='';
+  document.querySelectorAll('#eventsTable tbody tr').forEach(x=>x.classList.remove('sel'));
+  el('ev_id').value='';
+  el('ev_name').value='';
+  el('ev_start').value='';
+  el('ev_duration').value=90;
+  el('ev_capacity').value=12;
+  el('ev_price').value=200;
+  el('ev_sibling').value=20;
+  el('ev_msg').textContent='';
 };
 
 /* ===== COUPONS ===== */
@@ -797,7 +729,6 @@ function renderCoupons(items){
     };
     tr.addEventListener('click', onPick, {passive:true});
     tr.addEventListener('pointerup', onPick, {passive:true});
-
     box.appendChild(tr);
   });
 }
@@ -847,6 +778,23 @@ el('cp_save').onclick = async ()=>{
     msg.textContent=String(e);
     logDbg(String(e));
   }
+};
+el('cp_reset').onclick = ()=>{
+  SELECTED_COUPON_CODE='';
+  document.querySelectorAll('#couponsTable tbody tr').forEach(x=>x.classList.remove('sel'));
+  el('cp_code').value='';
+  el('cp_type').value='amount';
+  el('cp_value').value='';
+  el('cp_maxuses').value='';
+  el('cp_minqty').value='';
+  el('cp_events').value='*';
+  el('cp_stack').value='true';
+  el('cp_cap').value='';
+  el('cp_from').value='';
+  el('cp_to').value='';
+  el('cp_active').value='1';
+  el('cp_note').value='';
+  el('cp_msg').textContent='';
 };
 
 /* ===== BOOKINGS ===== */
@@ -924,7 +872,6 @@ async function loadBookings(){
 
     tr.addEventListener('click', onPick, {passive:true});
     tr.addEventListener('pointerup', onPick, {passive:true});
-
     tb.appendChild(tr);
   });
 }
