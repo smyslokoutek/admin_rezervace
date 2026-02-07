@@ -51,8 +51,24 @@
     .b-low{background:#e5e7eb;color:#374151}
     .b-urg{background:#fef3c7;color:#92400e}
     .mono{font:12px/1.4 ui-monospace,Menlo,monospace;color:#374151}
-    .radarCell{min-width:240px}
+    .radarCell{min-width:260px}
     .mini{display:block;margin-top:2px;color:#6b7280;font-size:12px}
+
+    /* ===== AKČNÍ PANEL ===== */
+    .panel{display:grid;grid-template-columns:1fr;gap:10px;margin:10px 0 0}
+    .panelRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#f3f4f6;font-weight:700;font-size:12px}
+    .actionList{margin-top:10px;display:grid;gap:10px}
+    .actionItem{border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff}
+    .actionTop{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .actionTitle{font-weight:900}
+    .actionMeta{color:#6b7280;font-size:12px}
+    .actionBtns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .btnSm{margin-top:0;padding:8px 10px;border-radius:10px;font-size:12px}
+    .btnGhost{background:#e5e7eb;color:#111}
+    .btnOk{background:#111;color:#fff}
+    .hidden{display:none!important}
+    .smallSelect{padding:8px 10px;border-radius:10px;font-size:12px;border:1px solid #e5e7eb;background:#fff}
   </style>
 </head>
 <body>
@@ -88,6 +104,26 @@
       <div class="grid">
         <div class="card">
           <h2>Seznam termínů</h2>
+
+          <!-- ✅ Akční panel: co řešit -->
+          <div class="panel">
+            <div class="panelRow">
+              <span class="chip">🎯 Co řešit</span>
+
+              <label class="muted" style="margin:0">Pohled</label>
+              <select id="radar_view" class="smallSelect">
+                <option value="acute">Akutní (10 dní)</option>
+                <option value="month" selected>Měsíc (30 dní)</option>
+              </select>
+
+              <span class="muted" id="radar_summary" style="margin-left:auto"></span>
+            </div>
+
+            <div id="radar_actions" class="actionList">
+              <div class="muted">Načítám radar…</div>
+            </div>
+          </div>
+
           <div class="toolbar">
             <input id="f_from" type="date" />
             <input id="f_to" type="date" />
@@ -97,9 +133,10 @@
           </div>
           <div class="muted">Kliknutím vybereš termín pro úpravu / export / archivaci.</div>
           <table id="eventsTable"><thead><tr>
-            <th>ID</th><th>Název</th><th>Start</th><th>Kap.</th><th>Obs.</th><th>Radar</th><th>ETA</th><th>Cena</th><th>Sleva souroz.</th>
+            <th>ID</th><th>Název</th><th>Start</th><th>Kap.</th><th>Obs.</th><th>Semafor</th><th>Doporučení</th><th>Cena</th><th>Sleva souroz.</th>
           </tr></thead><tbody></tbody></table>
         </div>
+
         <div class="card">
           <h2>Nový / úprava termínu</h2>
           <div class="muted">Zapisuje se do <span class="pill">Events</span>.</div>
@@ -262,11 +299,22 @@ async function apiFetch(url, opts={}){
   }
 }
 
-/* ===== KAPACITNÍ RADAR ===== */
-const RADAR_WINDOW_DAYS = 30;      // ✅ 30 dní (dle tvého provozu)
-const RADAR_URGENT_DAYS = 3;       // termín brzy => urgent
-const RADAR_LOW_RATE = 0.08;       // ~2.4 místa / 30 dní => low demand (pro 8–12 kapacitu dává smysl)
-const RADAR_HIGH_FACTOR = 1.10;    // pokud ETA vyprodání <= 1.10× dní do startu => high demand
+/* ===== KAPACITNÍ RADAR (akční) =====
+   Cíl: manželka nechce "30 dní: 0 míst".
+   Chce: "Chybí X míst, do termínu Y dní, co udělat".
+*/
+const RADAR_WINDOW_DAYS = 30;  // počítáme tempo za posledních 30 dní
+const VIEW_ACUTE_DAYS = 10;    // akutní pohled = termíny do 10 dní
+const VIEW_MONTH_DAYS = 30;    // měsíční pohled = termíny do 30 dní
+
+// prahy pro SEMAFOR (bez historie a bez Apps Script změn)
+const THRESH = {
+  CRITICAL_DAYS: 7,    // do 7 dní
+  SOON_DAYS: 14,       // do 14 dní
+  LOW_PCT_7: 0.40,     // <40% obsazení do 7 dní = krizové
+  LOW_PCT_14: 0.25,    // <25% obsazení do 14 dní = tlačit
+  ZERO_AFTER_HOURS: 48 // 0 rezervací po 48h od vytvoření/začátku okna => hlídat (fallback)
+};
 
 function daysDiff_(a, b){
   const ms = 24*60*60*1000;
@@ -279,6 +327,33 @@ function escapeHtml_(s){
 function badge_(cls, text, title=''){
   const t = title ? ` title="${escapeHtml_(title)}"` : '';
   return `<span class="badge ${cls}"${t}>${text}</span>`;
+}
+
+function formatCZDate_(isoOrStr){
+  try{
+    const d = new Date(isoOrStr);
+    if(isNaN(d.getTime())) return String(isoOrStr||'');
+    return d.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  }catch{ return String(isoOrStr||''); }
+}
+function pad2_(n){ return String(n).padStart(2,'0'); }
+function formatShort_(isoOrStr){
+  try{
+    const d = new Date(isoOrStr);
+    if(isNaN(d.getTime())) return String(isoOrStr||'');
+    return `${pad2_(d.getDate())}.${pad2_(d.getMonth()+1)}. ${pad2_(d.getHours())}:${pad2_(d.getMinutes())}`;
+  }catch{ return String(isoOrStr||''); }
+}
+
+function buildPromoText_(ev){
+  const d = new Date(ev.start);
+  const dateLine = !isNaN(d.getTime())
+    ? `${pad2_(d.getDate())}.${pad2_(d.getMonth()+1)}.${d.getFullYear()} v ${pad2_(d.getHours())}:${pad2_(d.getMinutes())}`
+    : String(ev.start||'');
+  const left = Math.max(0, Number(ev.capacity||0) - Number(ev.taken||0));
+  const name = String(ev.name||'');
+  // link neznáme, necháme generické (manželka vloží, nebo doplníš později)
+  return `📌 ${name}\n🗓️ ${dateLine}\n✅ Volná místa: ${left}\n\nRezervace: (vložit odkaz)\n`;
 }
 
 async function fetchBookingsRange_(fromISO, toISO){
@@ -298,70 +373,184 @@ async function fetchBookingsRange_(fromISO, toISO){
     all = all.concat(j.items||[]);
     if((j.items||[]).length < pageSize) break;
     page++;
-    if(page > 15) break; // ~3000 řádků (pro 20 termínů/měsíc je to bezpečné)
+    if(page > 15) break;
   }
   return all;
 }
 
-function computeRadarMap_(events, bookings){
-  const now = new Date();
+function computeRadar_(events, bookings){
+  // bookings: součet qty za okno
   const byEv = new Map();
-
   bookings.forEach(b=>{
     const id = String(b.eventId||'');
     const qty = Number(b.qty||1);
     byEv.set(id, (byEv.get(id)||0) + qty);
   });
 
+  const now = new Date();
   const map = {};
   events.forEach(ev=>{
     const cap = Number(ev.capacity||0);
     const taken = Number(ev.taken||0);
-    const left = cap - taken;
+    const left = Math.max(0, cap - taken);
 
     const start = new Date(ev.start);
     const daysToStart = clamp_(daysDiff_(now, start), -9999, 9999);
 
     const windowSum = Number(byEv.get(String(ev.id))||0);
-    const velocity = windowSum / RADAR_WINDOW_DAYS; // místa/den
+    const velocity = windowSum / RADAR_WINDOW_DAYS; // místa/den (posledních 30 dní)
     const etaDays = (velocity > 0) ? (left / velocity) : null;
 
-    let cls='b-ok', text='STABILNÍ';
-    let etaText = (etaDays != null) ? `~${Math.ceil(etaDays)} dní` : '—';
+    const pct = cap > 0 ? (taken / cap) : 0;
 
-    const detail = [
-      `Volno: ${left}/${cap}`,
-      `Tempo: ${velocity.toFixed(2)} míst/den (za ${RADAR_WINDOW_DAYS} dnů: ${windowSum})`,
-      `Do startu: ${daysToStart} dní`,
-      etaDays!=null ? `ETA vyprodáno: ~${Math.ceil(etaDays)} dní` : `ETA vyprodáno: neznámé`
-    ].join('\n');
+    // SEMAFOR (primárně podle času a obsazení – srozumitelnější)
+    let status = 'OK';     // OK / WATCH / PUSH / CRITICAL / SOLD
+    let cls = 'b-ok';
+    let headline = '✅ OK';
+    let advice = 'Zatím v normě.';
+    let action = 'Žádná akce.';
 
     if(left <= 0){
-      cls='b-sold'; text='VYPRODÁNO'; etaText='—';
-    } else if(daysToStart <= RADAR_URGENT_DAYS){
-      if(velocity <= RADAR_LOW_RATE){
-        cls='b-urg'; text='URGENT'; etaText='brzy';
-      } else {
-        cls='b-ok'; text='BLÍZKO'; etaText = etaDays!=null ? `~${Math.ceil(etaDays)} dní` : '—';
-      }
-    } else if(velocity <= RADAR_LOW_RATE){
-      cls='b-low'; text='LOW DEMAND'; etaText='—';
-    } else if(etaDays != null && etaDays <= (daysToStart * RADAR_HIGH_FACTOR)){
-      cls='b-high'; text='HIGH DEMAND'; etaText = `~${Math.ceil(etaDays)} dní`;
+      status='SOLD'; cls='b-sold'; headline='VYPRODÁNO'; advice='Hotovo.'; action='—';
+    } else if(daysToStart <= THRESH.CRITICAL_DAYS && pct < THRESH.LOW_PCT_7){
+      status='CRITICAL'; cls='b-high'; headline='🔴 KRIZOVÉ';
+      advice = `Do termínu ${daysToStart} dní, chybí ${left} míst.`;
+      action = 'Dát dnes post + story (připomenout).';
+    } else if(daysToStart <= THRESH.SOON_DAYS && pct < THRESH.LOW_PCT_14){
+      status='PUSH'; cls='b-urg'; headline='🟠 TLAČIT';
+      advice = `Do termínu ${daysToStart} dní, chybí ${left} míst.`;
+      action = 'Naplánovat připomenutí (story / FB).';
+    } else if(pct < 0.15 && daysToStart > 0){
+      status='WATCH'; cls='b-low'; headline='🟡 HLÍDAT';
+      advice = `Zatím slabší start, chybí ${left} míst.`;
+      action = 'Jemně připomenout (1× příspěvek).';
     } else {
-      cls='b-ok'; text='STABILNÍ'; etaText = etaDays!=null ? `~${Math.ceil(etaDays)} dní` : '—';
+      // OK (případně přidáme "rychlé plnění" podle ETA)
+      if(etaDays != null && daysToStart > 0 && etaDays <= daysToStart * 1.1){
+        cls='b-high'; headline='🔥 PLNÍ SE'; advice=`Tempo dobré, chybí ${left} míst.`; action='Spíš jen udržet.';
+      }
     }
 
+    const detail = [
+      `Obsazení: ${taken}/${cap} (${Math.round(pct*100)}%)`,
+      `Volno: ${left}`,
+      `Do startu: ${daysToStart} dní`,
+      `Tempo (30 dní): ${windowSum} míst (${velocity.toFixed(2)}/den)`,
+      etaDays!=null ? `ETA vyprodání: ~${Math.ceil(etaDays)} dní` : `ETA vyprodání: neznámé`
+    ].join('\n');
+
     map[String(ev.id)] = {
+      status,
+      cls,
+      headline,
+      advice,
+      action,
+      left,
+      cap,
+      taken,
+      pct,
+      daysToStart,
       velocityPerDay: velocity,
+      windowSum,
       etaDays,
-      labelHtml: badge_(cls, text, detail) + ` <span class="mono">(${velocity.toFixed(2)}/den)</span>` +
-        `<span class="mini">30 dní: ${windowSum} míst</span>`,
-      etaText
+      semaforHtml: badge_(cls, headline.replace('✅ ','').replace('🔥 ',''), detail),
+      radarHtml:
+        badge_(cls, headline, detail) +
+        `<span class="mini">${advice}<br><strong>Doporučení:</strong> ${action}</span>`
     };
   });
 
   return map;
+}
+
+function filterUpcoming_(events, maxDays){
+  const now = new Date();
+  return (events||[]).filter(ev=>{
+    const d = new Date(ev.start);
+    if(isNaN(d.getTime())) return false;
+    const dt = daysDiff_(now, d);
+    return dt >= 0 && dt <= maxDays;
+  }).sort((a,b)=> new Date(a.start) - new Date(b.start));
+}
+
+function buildActionItems_(events, radarMap, view){
+  const maxDays = (view === 'acute') ? VIEW_ACUTE_DAYS : VIEW_MONTH_DAYS;
+  const upcoming = filterUpcoming_(events, maxDays);
+
+  // prioritizace: CRITICAL -> PUSH -> WATCH
+  const priority = { CRITICAL: 0, PUSH: 1, WATCH: 2, OK: 9, SOLD: 10 };
+
+  const items = upcoming
+    .map(ev => ({ ev, r: radarMap[String(ev.id)] }))
+    .filter(x => x.r && ['CRITICAL','PUSH','WATCH'].includes(x.r.status))
+    .sort((a,b)=>{
+      const pa = priority[a.r.status] ?? 9;
+      const pb = priority[b.r.status] ?? 9;
+      if(pa !== pb) return pa - pb;
+      return a.r.daysToStart - b.r.daysToStart;
+    })
+    .slice(0, 6); // max 6 úkolů
+
+  return { items, maxDays, totalUpcoming: upcoming.length };
+}
+
+function renderActionPanel_(events, radarMap){
+  const view = (el('radar_view')?.value) || 'month';
+  const box = el('radar_actions');
+  const sum = el('radar_summary');
+
+  if(!box || !sum){ return; }
+
+  const { items, maxDays, totalUpcoming } = buildActionItems_(events, radarMap, view);
+
+  // summary
+  const c = items.filter(x=>x.r.status==='CRITICAL').length;
+  const p = items.filter(x=>x.r.status==='PUSH').length;
+  const w = items.filter(x=>x.r.status==='WATCH').length;
+  sum.textContent = `Výhled ${maxDays} dní: ${totalUpcoming} termínů • úkoly: ${c}× kritické, ${p}× tlačit, ${w}× hlídat`;
+
+  if(!items.length){
+    box.innerHTML = `<div class="muted">✅ Nic kritického. Vypadá to v pohodě.</div>`;
+    return;
+  }
+
+  box.innerHTML = '';
+  items.forEach(({ev, r})=>{
+    const left = Math.max(0, Number(ev.capacity||0) - Number(ev.taken||0));
+    const promo = buildPromoText_(ev);
+
+    const item = document.createElement('div');
+    item.className = 'actionItem';
+
+    item.innerHTML = `
+      <div class="actionTop">
+        <div>
+          <div class="actionTitle">${r.radarHtml}</div>
+          <div class="actionMeta">${escapeHtml_(ev.name||'')} • ${escapeHtml_(formatShort_(ev.start))} • chybí <strong>${left}</strong> míst</div>
+        </div>
+        <div class="actionBtns">
+          <button class="btnSm btnGhost" data-act="copy" data-id="${escapeHtml_(ev.id)}">Zkopírovat text (IG/FB)</button>
+          <button class="btnSm btnGhost" data-act="pick" data-id="${escapeHtml_(ev.id)}">Vybrat termín</button>
+        </div>
+      </div>
+    `;
+    item.querySelector('[data-act="copy"]').onclick = async ()=>{
+      try{
+        await navigator.clipboard.writeText(promo);
+        alert('Zkopírováno do schránky ✅');
+      }catch{
+        // fallback: prompt
+        prompt('Zkopíruj text:', promo);
+      }
+    };
+    item.querySelector('[data-act="pick"]').onclick = ()=>{
+      // najdi řádek v tabulce a vyber
+      const tr = document.querySelector(`#eventsTable tbody tr[data-eid="${CSS.escape(String(ev.id))}"]`);
+      if(tr){ tr.scrollIntoView({behavior:'smooth', block:'center'}); tr.click(); }
+    };
+
+    box.appendChild(item);
+  });
 }
 
 /* ===== OTP ===== */
@@ -422,6 +611,10 @@ let BOOKING_KEY=null;
   if(x) x.addEventListener('input', ()=>loadEvents());
 });
 
+if(el('radar_view')){
+  el('radar_view').addEventListener('change', ()=>{ if(window.__LAST_EVENTS && window.__LAST_RADAR){ renderActionPanel_(window.__LAST_EVENTS, window.__LAST_RADAR); } });
+}
+
 el('ev_export').onclick = ()=>{
   if(!SELECTED_EVENT_ID){ alert('Vyber termín.'); return; }
   window.location.href = API_URL+'?action=admin_bookings_export&eventId='+encodeURIComponent(SELECTED_EVENT_ID)+'&'+authQuery();
@@ -443,6 +636,7 @@ el('ev_archive').onclick = async ()=>{
 async function loadEvents(){
   const box=el('eventsTable').querySelector('tbody');
   box.innerHTML='<tr><td colspan="9">Načítám…</td></tr>';
+  if(el('radar_actions')) el('radar_actions').innerHTML = `<div class="muted">Načítám radar…</div>`;
 
   try{
     const p=new URLSearchParams({
@@ -455,18 +649,22 @@ async function loadEvents(){
     if(!j.ok) throw new Error(j.error||'Chyba načtení');
 
     const events = j.items || [];
-    renderEvents(events); // rychle vykresli bez radaru
+    window.__LAST_EVENTS = events;
 
-    // Radar: rezervace za posledních 30 dnů
+    renderEvents(events); // rychle bez radaru
+
+    // radar: tempo za posledních 30 dní
     const now = new Date();
     const from = new Date(now.getTime() - RADAR_WINDOW_DAYS*24*60*60*1000);
     const fromISO = from.toISOString().slice(0,10);
     const toISO = now.toISOString().slice(0,10);
 
     const bookings = await fetchBookingsRange_(fromISO, toISO);
-    const radarMap = computeRadarMap_(events, bookings);
+    const radarMap = computeRadar_(events, bookings);
+    window.__LAST_RADAR = radarMap;
 
-    renderEvents(events, radarMap); // překresli s radarem
+    renderEvents(events, radarMap);       // tabulka se semaforem + doporučením
+    renderActionPanel_(events, radarMap); // akční panel nahoře
   }catch(e){
     box.innerHTML=`<tr><td colspan="9" style="color:#dc2626">${e.message}</td></tr>`;
     logDbg(String(e));
@@ -480,21 +678,27 @@ function renderEvents(items, radarMap = null){
   box.innerHTML='';
   items.forEach(ev=>{
     const tr=document.createElement('tr');
+    tr.dataset.eid = String(ev.id);
 
     const r = radarMap ? radarMap[String(ev.id)] : null;
-    const radarHtml = r ? `<div class="radarCell">${r.labelHtml}</div>` : `<span class="badge b-low">RADAR…</span>`;
-    const etaHtml = r ? r.etaText : '—';
+
+    const semafor = r ? `${badge_(r.cls, r.headline)}`
+                      : `${badge_('b-low','RADAR…')}`;
+
+    const advice = r
+      ? `<div class="radarCell">${escapeHtml_(r.advice)}<span class="mini"><strong>Doporučení:</strong> ${escapeHtml_(r.action)}</span></div>`
+      : `<span class="muted">Načítám…</span>`;
 
     tr.innerHTML=
-      `<td>${ev.id}</td>
-       <td>${ev.name}</td>
-       <td>${ev.start}</td>
-       <td>${ev.capacity}</td>
-       <td>${ev.taken}</td>
-       <td>${radarHtml}</td>
-       <td class="mono">${etaHtml}</td>
-       <td>${ev.price}</td>
-       <td>${ev.sibling_discount}</td>`;
+      `<td>${escapeHtml_(ev.id)}</td>
+       <td>${escapeHtml_(ev.name)}</td>
+       <td>${escapeHtml_(formatCZDate_(ev.start))}</td>
+       <td>${escapeHtml_(ev.capacity)}</td>
+       <td>${escapeHtml_(ev.taken)}</td>
+       <td>${semafor}</td>
+       <td>${advice}</td>
+       <td>${escapeHtml_(ev.price)}</td>
+       <td>${escapeHtml_(ev.sibling_discount)}</td>`;
 
     const onPick = ()=>{
       setSel(tr,'#eventsTable');
@@ -592,7 +796,7 @@ function renderCoupons(items){
       fillCouponForm(c);
     };
     tr.addEventListener('click', onPick, {passive:true});
-    tr.addEventListener('pointerup', onPick, {passive:true}); // iOS fallback
+    tr.addEventListener('pointerup', onPick, {passive:true});
 
     box.appendChild(tr);
   });
@@ -719,7 +923,7 @@ async function loadBookings(){
     };
 
     tr.addEventListener('click', onPick, {passive:true});
-    tr.addEventListener('pointerup', onPick, {passive:true}); // iOS fallback
+    tr.addEventListener('pointerup', onPick, {passive:true});
 
     tb.appendChild(tr);
   });
