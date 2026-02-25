@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Admin – Smyslokoutek</title>
-
   <script>
     (function () {
       if (location.hostname.endsWith('.github.io')) {
@@ -12,9 +11,7 @@
       }
     })();
   </script>
-
   <meta name="robots" content="noindex,nofollow">
-
   <style>
     :root{--ink:#111827;--muted:#6b7280;--card:#fff;--bg:#f9fafb;--brand:#111;--ok:#16a34a;--err:#dc2626}
     html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
@@ -46,7 +43,6 @@
     .log{margin:10px 0;padding:10px;border-radius:8px;background:#fff;border:1px dashed #e5e7eb;font:12px/1.5 ui-monospace,Menlo,monospace;max-height:160px;overflow:auto;white-space:pre-wrap}
     .tableWrap{overflow:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
     .tableWrap table{min-width:860px}
-
     /* ===== “CO ŘEŠIT” ===== */
     .seg{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .seg button{background:#e5e7eb;color:#111;margin-top:0}
@@ -61,7 +57,6 @@
     .task .actions button.alt{background:#e5e7eb;color:#111;font-weight:800}
     .task .rec{margin-top:6px;color:#374151;font-size:13px}
     .summary{margin-top:10px;color:#6b7280;font-size:12px;text-align:right}
-
     /* ===== SEMAFOR ===== */
     .badge{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}
     .dot{width:10px;height:10px;border-radius:999px}
@@ -70,7 +65,6 @@
     .b-ok{background:#e0e7ff;color:#1e3a8a}
     .b-sold{background:#111;color:#fff}
     .mono{font:12px/1.4 ui-monospace,Menlo,monospace;color:#374151}
-
     @media (max-width:520px){
       .wrap{margin:16px auto;padding:12px}
       h1{font-size:20px}
@@ -83,7 +77,6 @@
 <body>
 <div class="wrap">
   <h1>Admin – Smyslokoutek</h1>
-
   <div id="loginCard" class="card">
     <div id="stepEmail">
       <label>Zadejte e-mail</label>
@@ -99,7 +92,6 @@
     </div>
     <div id="debug" class="log" style="display:none"></div>
   </div>
-
   <div id="app" style="display:none">
     <nav>
       <button data-tab="events" class="active">Termíny</button>
@@ -108,12 +100,10 @@
       <button data-tab="archive">Archiv</button>
       <div class="right" style="margin-left:auto"><button id="logoutBtn">Odhlásit</button></div>
     </nav>
-
     <div id="tab-events">
       <div class="grid">
         <div class="card">
           <h2>Seznam termínů</h2>
-
           <div class="seg" style="margin-top:6px">
             <button id="view_tasks" class="active">🧭 Co řešit</button>
             <button id="view_table">🧾 Pohled</button>
@@ -125,10 +115,8 @@
               </select>
             </div>
           </div>
-
           <div id="tasksBox" class="tasks"></div>
           <div id="tasksSummary" class="summary"></div>
-
           <div id="tableBox" style="display:none">
             <div class="toolbar">
               <input id="f_from" type="date" />
@@ -145,7 +133,6 @@
             </div>
           </div>
         </div>
-
         <div class="card" id="editCard">
           <h2>Nový / úprava termínu</h2>
           <div class="muted">Zapisuje se do <span class="pill">Events</span>.</div>
@@ -165,7 +152,6 @@
         </div>
       </div>
     </div>
-
     <div id="tab-coupons" style="display:none">
       <div class="grid">
         <div class="card">
@@ -213,7 +199,6 @@
         </div>
       </div>
     </div>
-
     <div id="tab-bookings" style="display:none">
       <div class="card">
         <h2>Rezervace</h2>
@@ -230,7 +215,6 @@
           </tr></thead><tbody></tbody></table>
         </div>
       </div>
-
       <div class="card">
         <h2>Upravit rezervaci</h2>
         <div class="muted">Klikni v tabulce na řádek – záznam se načte sem.</div>
@@ -248,7 +232,6 @@
         <div id="bk_msg" class="error"></div>
       </div>
     </div>
-
     <div id="tab-archive" style="display:none">
       <div class="card">
         <h2>Archiv termínů</h2>
@@ -259,19 +242,15 @@
         </div>
       </div>
     </div>
-
   </div>
 </div>
-
 <script>
 /* ===== KONFIG ===== */
-const API_URL = 'https://script.google.com/macros/s/AKfycbw50xjD8IdQ0qs3IS4rVqhifTd8g8yWP2hY7rYD86HPSRvpgoFj0xtI-HBQPvDWS32noA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzAJh9wVawvTfLUfsi7qqtkxyaT5Hpm69gyAlwNROW8N5S-MEIrOSW541caGaRQ5ysl_g/exec';
 if(!API_URL || !API_URL.includes('/exec')){ alert('Chybí platná API_URL!'); }
-
 /* ===== HELPERY ===== */
 const el = id => document.getElementById(id);
 const errEmail = el('msgEmail'), errOtp = el('msgOtp'), dbg = el('debug');
-
 function authQuery(){
   const t = localStorage.getItem('adm_token') || '';
   return 'Authorization=' + encodeURIComponent('Bearer ' + t);
@@ -318,7 +297,6 @@ async function apiFetch(url, opts={}){
     clearTimeout(t);
   }
 }
-
 /* ===== OTP ===== */
 el('sendOtpBtn').onclick = async ()=>{
   const email = el('email').value.trim().toLowerCase();
@@ -354,7 +332,6 @@ el('verifyOtpBtn').onclick = async ()=>{
     logDbg(String(e));
   }
 };
-
 /* ===== NAV ===== */
 document.querySelectorAll('nav button[data-tab]').forEach(b=>{
   b.onclick=()=>{
@@ -367,23 +344,19 @@ document.querySelectorAll('nav button[data-tab]').forEach(b=>{
   };
 });
 el('logoutBtn').onclick = ()=>{ localStorage.removeItem('adm_token'); location.reload(); };
-
 /* ===== STATE ===== */
 let SELECTED_EVENT_ID='';
 let SELECTED_COUPON_CODE='';
 let BOOKING_KEY=null;
 let EVENTS_CACHE=[];
-
 /* ===== “CO ŘEŠIT” logika (jen z Events dat) ===== */
 function semaforFor_(ev){
   const cap = Number(ev.capacity||0);
   const taken = Number(ev.taken||0);
   const left = cap - taken;
-
   const start = new Date(ev.start);
   const now = new Date();
   const daysToStart = daysDiff_(now, start);
-
   if(left <= 0){
     return {
       key:'sold',
@@ -392,10 +365,8 @@ function semaforFor_(ev){
       line:`Vyprodáno.`
     };
   }
-
   const half = Math.ceil(cap * 0.5);
   const missing = left;
-
   // prahy (prakticky pro 8–12 kapacitu)
   if(daysToStart <= 7 && missing >= half){
     return {
@@ -405,7 +376,6 @@ function semaforFor_(ev){
       line:`Do termínu ${Math.max(daysToStart,0)} dní, chybí ${missing} míst.`
     };
   }
-
   if(daysToStart <= 14 && missing >= half){
     return {
       key:'warn',
@@ -414,7 +384,6 @@ function semaforFor_(ev){
       line:`Do termínu ${Math.max(daysToStart,0)} dní, chybí ${missing} míst.`
     };
   }
-
   return {
     key:'ok',
     badgeHtml:`<span class="badge b-ok"><span class="dot" style="background:#2563eb"></span>OK</span>`,
@@ -422,14 +391,12 @@ function semaforFor_(ev){
     line:`Do termínu ${Math.max(daysToStart,0)} dní, volno ${missing} míst.`
   };
 }
-
 function formatStartShort_(iso){
   try{
     const d = new Date(iso);
     return d.toLocaleString('cs-CZ', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }).replace(',', '');
   }catch{ return String(iso||''); }
 }
-
 async function copyText_(txt){
   try{
     await navigator.clipboard.writeText(txt);
@@ -446,33 +413,27 @@ async function copyText_(txt){
     return true;
   }
 }
-
 function selectEventFromTasks_(ev){
   // přepneme do tabulky, aby bylo jasné, co se vybralo (a aby šel export/archiv)
   el('view_table').click();
-
   // vyplnit form
   SELECTED_EVENT_ID = ev.id;
   fillEventForm(ev);
-
   // najít a označit řádek
   const rows = Array.from(document.querySelectorAll('#eventsTable tbody tr'));
   const row = rows.find(r => (r.firstElementChild && r.firstElementChild.textContent.trim() === String(ev.id)));
   if(row) setSel(row,'#eventsTable');
-
   // na mobilu: scroll na editor (ať “neodroluje do řiti”)
   const edit = el('editCard');
   if(edit){
     edit.scrollIntoView({behavior:'smooth', block:'start'});
   }
 }
-
 /* ===== EVENTS ===== */
 ['f_from','f_to','f_q'].forEach(id=>{
   const x=el(id);
   if(x) x.addEventListener('input', ()=>loadEvents());
 });
-
 el('ev_export').onclick = ()=>{
   if(!SELECTED_EVENT_ID){ alert('Vyber termín.'); return; }
   window.location.href = API_URL+'?action=admin_bookings_export&eventId='+encodeURIComponent(SELECTED_EVENT_ID)+'&'+authQuery();
@@ -480,7 +441,6 @@ el('ev_export').onclick = ()=>{
 el('ev_archive').onclick = async ()=>{
   if(!SELECTED_EVENT_ID){ alert('Vyber termín.'); return; }
   if(!confirm('Archivovat vybraný termín?')) return;
-
   const j = await apiFetch(API_URL+'?action=admin_event_archive&'+authQuery(), {
     method:'POST',
     body: JSON.stringify({id:SELECTED_EVENT_ID})
@@ -490,12 +450,10 @@ el('ev_archive').onclick = async ()=>{
   await loadEvents();
   alert('Termín přesunut do archivu.');
 };
-
 function renderTasks_(events){
   const win = Number(el('windowSel').value||30);
   const now = new Date();
   const maxDate = new Date(now.getTime() + win*24*60*60*1000);
-
   const upcoming = events
     .map(ev=>{
       const start = new Date(ev.start);
@@ -503,40 +461,33 @@ function renderTasks_(events){
     })
     .filter(x => x.start >= now && x.start <= maxDate)
     .sort((a,b)=>a.start-b.start);
-
   const tasks = upcoming
     .map(x=>{
       const s = semaforFor_(x.ev);
       return { ...x, s };
     })
     .filter(x => x.s.key === 'crit' || x.s.key === 'warn');
-
   const box = el('tasksBox');
   const sum = el('tasksSummary');
-
   if(!tasks.length){
     box.innerHTML = `<div class="muted">Ve výhledu ${win} dnů není nic kritického. ✅</div>`;
     sum.textContent = `Výhled ${win} dnů: ${upcoming.length} termínů · úkoly: 0× kritické, 0× pozor`;
     return;
   }
-
   const crit = tasks.filter(t=>t.s.key==='crit').length;
   const warn = tasks.filter(t=>t.s.key==='warn').length;
   sum.textContent = `Výhled ${win} dnů: ${upcoming.length} termínů · úkoly: ${crit}× kritické, ${warn}× pozor`;
-
   box.innerHTML = '';
   tasks.forEach(t=>{
     const ev = t.ev;
     const cap = Number(ev.capacity||0);
     const taken = Number(ev.taken||0);
     const left = cap - taken;
-
     const igText =
 `${ev.name}
 📅 ${formatStartShort_(ev.start)}
 👧 Volná místa: ${left}/${cap}
 ➡️ Rezervace: smyslokoutek.cz`;
-
     const div = document.createElement('div');
     div.className = 'task';
     div.innerHTML = `
@@ -559,12 +510,10 @@ function renderTasks_(events){
     box.appendChild(div);
   });
 }
-
 async function loadEvents(){
   // pokud jsme na “Co řešit”, načteme bez tabulky rychle; tabulka se stejně vykreslí pro výběr/export
   const tb=el('eventsTable').querySelector('tbody');
   tb.innerHTML='<tr><td colspan="9">Načítám…</td></tr>';
-
   try{
     const p=new URLSearchParams({
       action:'admin_events_list',
@@ -575,7 +524,6 @@ async function loadEvents(){
     const j = await apiFetch(API_URL+'?'+p.toString()+'&'+authQuery(), { method:'GET' });
     if(!j.ok) throw new Error(j.error||'Chyba načtení');
     EVENTS_CACHE = j.items || [];
-
     renderTasks_(EVENTS_CACHE);
     renderEvents(EVENTS_CACHE);
   }catch(e){
@@ -585,24 +533,19 @@ async function loadEvents(){
     el('tasksSummary').textContent = '';
   }
 }
-
 function renderEvents(items){
   const box=el('eventsTable').querySelector('tbody');
   SELECTED_EVENT_ID='';
   if(!items.length){ box.innerHTML='<tr><td colspan="9">Žádné termíny.</td></tr>'; return; }
   box.innerHTML='';
-
   // řadit vzestupně dle startu, aby “krizové” bylo nahoře, ale zároveň chronologicky
   const sorted = [...items].sort((a,b)=> new Date(a.start) - new Date(b.start));
-
   sorted.forEach(ev=>{
     const tr=document.createElement('tr');
-
     const s = semaforFor_(ev);
     const recText = s.key==='crit' ? 'Dát dnes post + story (připomenout).' :
                     s.key==='warn' ? 'Podpořit v týdnu (post / stories / připomenutí ve skupinách).' :
                     '—';
-
     tr.innerHTML=
       `<td>${escapeHtml_(ev.id)}</td>
        <td>${escapeHtml_(ev.name)}</td>
@@ -613,7 +556,6 @@ function renderEvents(items){
        <td class="mono">${escapeHtml_(s.line)}<div class="muted">${escapeHtml_(recText)}</div></td>
        <td>${escapeHtml_(ev.price)}</td>
        <td>${escapeHtml_(ev.sibling_discount)}</td>`;
-
     const onPick = ()=>{
       setSel(tr,'#eventsTable');
       SELECTED_EVENT_ID=ev.id;
@@ -625,11 +567,9 @@ function renderEvents(items){
     };
     tr.addEventListener('click', onPick, {passive:true});
     tr.addEventListener('pointerup', onPick, {passive:true});
-
     box.appendChild(tr);
   });
 }
-
 function fillEventForm(ev){
   el('ev_id').value=ev.id||'';
   el('ev_name').value=ev.name||'';
@@ -643,7 +583,6 @@ function fillEventForm(ev){
   el('ev_price').value=ev.price||0;
   el('ev_sibling').value=ev.sibling_discount||0;
 }
-
 el('ev_reset').onclick = ()=>{
   SELECTED_EVENT_ID='';
   el('ev_id').value='';
@@ -656,15 +595,12 @@ el('ev_reset').onclick = ()=>{
   el('ev_msg').textContent='';
   document.querySelectorAll('#eventsTable tbody tr').forEach(x=>x.classList.remove('sel'));
 };
-
 el('ev_save').onclick = async ()=>{
   const msg=el('ev_msg');
   msg.className='error';
   msg.textContent='';
-
   if(!el('ev_name').value.trim()){ msg.textContent='Vyplň název.'; return; }
   if(!el('ev_start').value){ msg.textContent='Vyplň datum a čas.'; return; }
-
   const payload={
     id: el('ev_id').value.trim(),
     name: el('ev_name').value.trim(),
@@ -674,7 +610,6 @@ el('ev_save').onclick = async ()=>{
     price: Number(el('ev_price').value||0),
     sibling_discount: Number(el('ev_sibling').value||0)
   };
-
   try{
     const j = await apiFetch(API_URL+'?action=admin_event_upsert&'+authQuery(), { method:'POST', body: JSON.stringify(payload) });
     if(!j.ok) throw new Error(j.error||'Uložení selhalo');
@@ -687,7 +622,6 @@ el('ev_save').onclick = async ()=>{
     logDbg(String(e));
   }
 };
-
 /* ===== Přepínače “Co řešit / Pohled” ===== */
 el('view_tasks').onclick = ()=>{
   el('view_tasks').classList.add('active');
@@ -707,7 +641,6 @@ el('view_table').onclick = ()=>{
   requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'auto'}));
 };
 el('windowSel').onchange = ()=>renderTasks_(EVENTS_CACHE);
-
 /* ===== COUPONS ===== */
 el('cp_delete').onclick = async ()=>{
   if(!SELECTED_COUPON_CODE){ alert('Vyber kupon.'); return; }
@@ -741,7 +674,6 @@ function renderCoupons(items){
   items.forEach(c=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${escapeHtml_(c.code)}</td><td>${escapeHtml_(c.type)}</td><td>${escapeHtml_(c.value)}</td><td>${escapeHtml_(c.max_uses)}</td><td>${escapeHtml_(c.used)}</td><td>${escapeHtml_(c.min_qty)}</td><td>${escapeHtml_(c.active)}</td>`;
-
     const onPick = ()=>{
       setSel(tr,'#couponsTable');
       SELECTED_COUPON_CODE=c.code;
@@ -752,7 +684,6 @@ function renderCoupons(items){
     };
     tr.addEventListener('click', onPick, {passive:true});
     tr.addEventListener('pointerup', onPick, {passive:true});
-
     box.appendChild(tr);
   });
 }
@@ -792,7 +723,6 @@ el('cp_save').onclick = async ()=>{
   msg.className='error';
   msg.textContent='';
   if(!el('cp_code').value.trim()){ msg.textContent='Vyplň kód.'; return; }
-
   const payload={
     code: el('cp_code').value.trim().toUpperCase(),
     type: el('cp_type').value,
@@ -807,7 +737,6 @@ el('cp_save').onclick = async ()=>{
     active: Number(el('cp_active').value||1),
     note: el('cp_note').value||''
   };
-
   try{
     const j = await apiFetch(API_URL+'?action=admin_coupon_upsert&'+authQuery(), { method:'POST', body: JSON.stringify(payload) });
     if(!j.ok) throw new Error(j.error||'Uložení selhalo');
@@ -820,7 +749,6 @@ el('cp_save').onclick = async ()=>{
     logDbg(String(e));
   }
 };
-
 /* ===== BOOKINGS ===== */
 el('b_export').onclick = ()=>{
   const v=el('b_ev').value;
@@ -831,7 +759,6 @@ el('b_export').onclick = ()=>{
   const x=el(id);
   if(x) x.addEventListener('input', ()=>loadBookings());
 });
-
 async function loadEventDropdown(){
   const j = await apiFetch(API_URL+'?action=admin_events_dropdown', { method:'GET' });
   if(j.ok){
@@ -848,7 +775,6 @@ async function loadEventDropdown(){
 async function loadBookings(){
   const tb=el('bookingsTable').querySelector('tbody');
   tb.innerHTML='<tr><td colspan="8">Načítám…</td></tr>';
-
   const p=new URLSearchParams({
     action:'admin_bookings_list',
     eventId: el('b_ev').value||'',
@@ -858,49 +784,39 @@ async function loadBookings(){
     page:'1',
     pageSize:'200'
   });
-
   const j = await apiFetch(API_URL+'?'+p.toString()+'&'+authQuery(), { method:'GET' });
   if(!j.ok){
     tb.innerHTML='<tr><td colspan="8" style="color:#dc2626">'+escapeHtml_(j.error||'Chyba načtení')+'</td></tr>';
     return;
   }
-
   tb.innerHTML='';
   if(!(j.items||[]).length){
     tb.innerHTML='<tr><td colspan="8">Žádné rezervace.</td></tr>';
     return;
   }
-
   (j.items||[]).forEach(bk=>{
     const tr=document.createElement('tr');
-
     let tsIso = '';
     try{
       const d = new Date(bk.ts);
       tsIso = !isNaN(d.getTime()) ? d.toISOString() : String(bk.ts||'');
     }catch{ tsIso = String(bk.ts||''); }
-
     tr.innerHTML=`<td>${escapeHtml_(new Date(bk.ts).toLocaleString('cs-CZ'))}</td><td>${escapeHtml_(bk.eventId)}</td><td>${escapeHtml_(bk.name||'')}</td>
       <td>${escapeHtml_(bk.email||'')}</td><td>${escapeHtml_(bk.phone||'')}</td><td>${escapeHtml_(bk.qty)}</td><td>${escapeHtml_(bk.payment||'')}</td><td>${escapeHtml_(bk.total||0)}</td>`;
-
     const onPick = ()=>{
       setSel(tr,'#bookingsTable');
       BOOKING_KEY = { ts: tsIso, eventId: bk.eventId };
-
       el('bk_name').value=bk.name||'';
       el('bk_qty').value=bk.qty||0;
       el('bk_phone').value=bk.phone||'';
       el('bk_email').value=bk.email||'';
       el('bk_payment').value=bk.payment||'cash';
-
       if(window.matchMedia && window.matchMedia('(max-width: 980px)').matches){
         el('bk_name').scrollIntoView({behavior:'smooth', block:'start'});
       }
     };
-
     tr.addEventListener('click', onPick, {passive:true});
     tr.addEventListener('pointerup', onPick, {passive:true});
-
     tb.appendChild(tr);
   });
 }
@@ -909,7 +825,6 @@ el('bk_save').onclick = async ()=>{
   msg.className='error';
   msg.textContent='';
   if(!BOOKING_KEY){ msg.textContent='Není vybraný záznam.'; return; }
-
   const payload={
     ts: BOOKING_KEY.ts,
     eventId: BOOKING_KEY.eventId,
@@ -919,47 +834,39 @@ el('bk_save').onclick = async ()=>{
     qty: Number(el('bk_qty').value||0),
     paymentMethod: el('bk_payment').value
   };
-
   const j = await apiFetch(API_URL+'?action=admin_booking_update&'+authQuery(), {
     method:'POST',
     body: JSON.stringify(payload)
   });
-
   if(!j.ok){
     msg.className='error';
     msg.textContent=j.error||'Uložení selhalo';
     return;
   }
-
   msg.className='ok';
   msg.textContent='Uloženo.';
   await loadBookings();
 };
-
 /* ===== ARCHIVE ===== */
 async function loadArchive(){
   const tb=el('archiveTable').querySelector('tbody');
   tb.innerHTML='<tr><td colspan="6">Načítám…</td></tr>';
-
   const j = await apiFetch(API_URL+'?action=admin_events_archive&'+authQuery(), { method:'GET' });
   if(!j.ok){
     tb.innerHTML='<tr><td colspan="6" style="color:#dc2626">'+escapeHtml_(j.error||'Chyba načtení')+'</td></tr>';
     return;
   }
-
   tb.innerHTML='';
   if(!(j.items||[]).length){
     tb.innerHTML='<tr><td colspan="6">Archiv je prázdný.</td></tr>';
     return;
   }
-
   (j.items||[]).forEach(ev=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${escapeHtml_(ev.id)}</td><td>${escapeHtml_(ev.name)}</td><td>${escapeHtml_(ev.start)}</td><td>${escapeHtml_(ev.capacity)}</td><td>${escapeHtml_(ev.taken)}</td><td>${escapeHtml_(ev.price)}</td>`;
     tb.appendChild(tr);
   });
 }
-
 /* ===== START ===== */
 async function startApp(){
   try{
